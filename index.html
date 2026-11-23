@@ -232,13 +232,13 @@ table.sticky tr.mismatch td.aff{box-shadow:inset 4px 0 0 var(--warn),1px 0 0 var
   <div class="card">
     <h2>Liste des affections</h2>
     <p class="muted">C'est la liste proposée dans tous les champs « Affection » (fiche patient, TACOJO) et utilisée dans les rapports. Une affection ajoutée depuis un champ de saisie apparaît ici, et une affection ajoutée ici apparaît dans les champs de saisie. Une affection par ligne, dans l'ordre de la feuille papier.</p>
-    <div class="row" style="margin-bottom:8px"><label style="min-width:280px">Ajouter une affection<input id="s-aff-new" placeholder="ex. Volvulus du sigmoïde" onkeydown="if(event.key==='Enter')addAffSettings()"></label><button class="btn small" onclick="addAffSettings()">Ajouter</button><span class="muted" id="s-aff-count"></span></div>
+    <div class="row" style="margin-bottom:8px"><label style="min-width:280px">Ajouter une affection<input id="s-aff-new" placeholder="ex. Volvulus du sigmoïde" oninput="listHint('s-aff-hint',this.value,findAff(this.value),'libellé')" onkeydown="if(event.key==='Enter')addAffSettings()"><span id="s-aff-hint" class="muted"></span></label><button class="btn small" onclick="addAffSettings()">Ajouter</button><span class="muted" id="s-aff-count"></span></div>
     <textarea id="s-aff" style="width:100%;min-height:260px"></textarea>
     <div class="row" style="margin-top:8px"><button class="btn" onclick="saveAff()">Enregistrer la liste</button><button class="btn ghost" onclick="resetAff()">Revenir à la liste d'origine</button></div>
   </div>
   <div class="card">
     <h2>Liste des diagnostics</h2>
-    <p class="muted">Proposée dans le champ « Diagnostic » de la fiche patient. Elle grandit aussi toute seule avec les diagnostics saisis. Un diagnostic par ligne.</p>
+    <p class="muted">Proposée dans le champ « Diagnostic » de la fiche patient, avec toutes les affections ci-dessus. Elle grandit aussi toute seule avec les diagnostics saisis. Un diagnostic par ligne.</p>
     <textarea id="s-diag" style="width:100%;min-height:160px"></textarea>
     <div class="row" style="margin-top:8px"><button class="btn" onclick="saveDiag()">Enregistrer la liste</button></div>
   </div>
@@ -417,7 +417,7 @@ async function openPatient(id,opt={}){
     <h3 style="font-size:14px;margin:14px 0 6px">Bloc opératoire (facultatif)</h3>
     <div class="grid">
       <label>Diagnostic<input id="f-diag" data-combo="diag" autocomplete="off" value="${esc(p.diagnostic)}" placeholder="Tapez pour chercher…" oninput="diagHint()"><span id="f-diag-hint" class="muted"></span></label>
-      <label>Indication / intervention<input id="f-ind" value="${esc(p.indication)}"></label>
+      <label>Indication / intervention<input id="f-ind" data-combo="ind" autocomplete="off" value="${esc(p.indication)}" placeholder="Tapez pour chercher…" oninput="indHint()"><span id="f-ind-hint" class="muted"></span></label>
       <label>Date d'intervention<input type="date" id="f-di" value="${esc(p.dateIntervention)}"></label>
     </div>
     <h3 style="font-size:14px;margin:14px 0 6px">Reçu de paiement</h3>
@@ -434,7 +434,10 @@ async function openPatient(id,opt={}){
     <div class="card" style="margin:0">
       <b>Photo du reçu</b>
       <p class="muted">Prenez le reçu en photo (téléphone) ou choisissez une image. La photo est gardée avec la fiche.</p>
-      <input type="file" accept="image/*" capture="environment" id="f-photo" onchange="photoChosen(this)">
+      <div class="row" id="f-photo-btns" style="gap:8px">
+        <label class="btn" style="flex-direction:row;color:#fff;cursor:pointer">📷 Prendre une photo<input type="file" accept="image/*" capture="environment" id="f-photo-cam" onchange="photoChosen(this)" style="display:none"></label>
+        <label class="btn ghost" style="flex-direction:row;color:var(--accent);cursor:pointer">🖼️ Choisir dans la galerie<input type="file" accept="image/*" id="f-photo" onchange="photoChosen(this)" style="display:none"></label>
+      </div>
       <div id="f-photo-prev" style="margin-top:8px"></div>
       <button class="btn ghost small hide" id="f-ocr" style="margin-top:8px" onclick="runOCR()">Lire le reçu et remplir la fiche</button>
       <div id="f-ocr-out" class="muted" style="margin-top:6px"></div>
@@ -446,12 +449,12 @@ async function openPatient(id,opt={}){
     <div class="row"><button class="btn ghost" onclick="closePop()">Annuler</button><button class="btn" onclick="savePatient(${isNew?"null":`'${p.id}'`})">Enregistrer</button></div>
   </div></div></div>`;
   window._photo=null; window._photoOrig=null;
-  ptype(); affHint(); diagHint();
+  ptype(); affHint(); diagHint(); indHint();
   if(p.hasPhoto){const ph=await photoGet(p.id); if(ph){window._photo=ph;showPhoto(ph);}}
-  if(opt.photo) setTimeout(()=>$("f-photo").click(),50);
+  if(opt.photo) setTimeout(()=>{const b=$("f-photo-btns");b.scrollIntoView({block:"center"});b.style.outline="3px solid var(--warn)";b.style.borderRadius="8px";setTimeout(()=>b.style.outline="",2500);},50);
 }
 function affHint(){const v=$("f-aff").value.trim();$("f-autre-l").classList.toggle("hide",v!=="Autres");
-  $("f-aff-hint").textContent=v&&!findAff(v)?"Nouvelle affection : elle sera ajoutée à la liste à l'enregistrement.":"";}
+  listHint("f-aff-hint",v,findAff(v),"libellé");}
 function ptype(){const h=$("f-type").value==="hospitalisation";document.querySelectorAll(".fc").forEach(e=>e.classList.toggle("hide",h));document.querySelectorAll(".fh").forEach(e=>e.classList.toggle("hide",!h));}
 function closePop(){$("pop").innerHTML="";}
 function photoChosen(inp){
@@ -905,7 +908,7 @@ async function savePatient(id){
   if(p.vpa){const dup=DB.patients.find(x=>x.vpa===p.vpa&&x.id!==id&&x.type===p.type&&pDate(x)===(p.type==="hospitalisation"?p.dateEntree:p.dateConsult));
     if(dup&&!window._dupOk){window._dupOk=true;$("f-warn").innerHTML=`<div class="hint">Une fiche avec le même N° VPA existe déjà à cette date (${esc(dup.prenom)} ${esc(dup.nom)}). Cliquez encore sur Enregistrer pour confirmer.</div>`;return;}}
   window._dupOk=false;
-  p.affection=ensureAff(p.affection); p.diagnostic=ensureDiag(p.diagnostic);
+  p.affection=ensureAff(p.affection); p.diagnostic=ensureDiag(p.diagnostic); p.indication=ensureInd(p.indication);
   let rec;
   if(id){rec=DB.patients.find(x=>x.id===id);Object.assign(rec,p);}
   else{rec=Object.assign({id:uid(),createdAt:new Date().toISOString()},p);DB.patients.push(rec);}
@@ -934,18 +937,29 @@ function tFillPeriod(){
 }
 /* Diagnostics : liste qui grandit avec les saisies (déjà saisis + ajoutés) */
 const DIAG_DEFAUT=["VCS avec colostomie","H.I.G.","Fistule anale","Lithiase vésiculaire symptomatique","Colostomie selon BV"];
-function diagList(){if(!DB.diag)DB.diag=DIAG_DEFAUT.slice();const all=DB.diag.slice();
-  DB.patients.forEach(p=>{if(p.diagnostic&&!all.some(d=>norm(d)===norm(p.diagnostic)))all.push(p.diagnostic);});
-  return all.sort((a,b)=>a.localeCompare(b,"fr"));}
+function diagList(){if(!DB.diag)DB.diag=DIAG_DEFAUT.slice();
+  return dedupe(DB.diag.concat(DB.aff.filter(a=>a!=="Autres"),DB.patients.map(p=>p.diagnostic))).sort((a,b)=>a.localeCompare(b,"fr"));}
+const IND_DEFAUT=["Rétablissement de la continuité","Cure","Fistulectomie","Cholécystectomie","Appendicectomie","Hémorroïdectomie","Laparotomie exploratrice","Exérèse"];
+function indList(){if(!DB.ind)DB.ind=IND_DEFAUT.slice();return dedupe(DB.ind.concat(DB.patients.map(p=>p.indication))).sort((a,b)=>a.localeCompare(b,"fr"));}
+function findInd(v){return indList().find(d=>norm(d)===norm(v));}
+function ensureInd(v){v=String(v||"").replace(/\s+/g," ").trim();if(!v)return "";const ex=findInd(v);if(ex)return ex;
+  if(!DB.ind)DB.ind=IND_DEFAUT.slice();DB.ind.push(v);save();toast("« "+v+" » ajoutée à la liste des indications");return v;}
+/* Indique pendant la saisie si la valeur est déjà dans la liste */
+function listHint(hintId,v,found,label){const h=$(hintId);if(!h)return;v=String(v||"").trim();
+  if(!v){h.innerHTML="";return;}
+  h.innerHTML=found?`<span style="color:var(--accent)">✓ Déjà dans la liste${norm(found)===norm(v)&&found!==v?" : « "+esc(found)+" »":""}</span>`
+    :`<span style="color:var(--warn)">Nouveau ${label} : il sera ajouté à la liste à l'enregistrement.</span>`;}
 function findDiag(v){return diagList().find(d=>norm(d)===norm(v));}
-function ensureDiag(v){v=String(v||"").trim();if(!v)return "";const ex=findDiag(v);if(ex)return ex;
+function ensureDiag(v){v=String(v||"").replace(/\s+/g," ").trim();if(!v)return "";const ex=findDiag(v);if(ex)return ex;
   if(!DB.diag)DB.diag=DIAG_DEFAUT.slice();DB.diag.push(v);save();refreshAffList();toast("« "+v+" » ajouté à la liste des diagnostics");return v;}
-function diagHint(){const v=$("f-diag").value.trim();$("f-diag-hint").textContent=v&&!findDiag(v)?"Nouveau diagnostic : il sera ajouté à la liste à l'enregistrement.":"";}
+function diagHint(){const v=$("f-diag").value;listHint("f-diag-hint",v,findDiag(v),"diagnostic");}
+function indHint(){const v=$("f-ind").value;listHint("f-ind-hint",v,findInd(v),"libellé");}
 function refreshAffList(){$("diag-list").innerHTML=diagList().map(d=>`<option value="${esc(d)}">`).join("");$("aff-list").innerHTML=DB.aff.map(a=>`<option value="${esc(a)}">`).join("");}
 /* Retrouve une affection existante sans tenir compte des accents ni des majuscules */
-const norm=s=>String(s||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().trim();
+const norm=s=>String(s||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[.,;:'’"()\-_/]+/g," ").replace(/\s+/g," ").trim();
+function dedupe(list){const seen=new Set(),out=[];list.forEach(x=>{x=String(x||"").replace(/\s+/g," ").trim();const k=norm(x);if(k&&!seen.has(k)){seen.add(k);out.push(x);}});return out;}
 function findAff(v){return DB.aff.find(a=>norm(a)===norm(v));}
-function ensureAff(v){v=String(v||"").trim();if(!v)return "";const ex=findAff(v);if(ex)return ex;
+function ensureAff(v){v=String(v||"").replace(/\s+/g," ").trim();if(!v)return "";const ex=findAff(v);if(ex)return ex;
   v=v.charAt(0).toUpperCase()+v.slice(1);DB.aff.push(v);save();refreshAffList();toast("« "+v+" » ajoutée à la liste des affections");return v;}
 function addAffSheet(){
   const v=$("t-aff").value.trim(); if(!v) return toast("Tapez ou choisissez une affection");
@@ -1139,12 +1153,12 @@ function renderProgramme(){
 /* =========================================================
    RÉGLAGES / SAUVEGARDE
    ========================================================= */
-function renderReglages(){$("s-aff").value=DB.aff.join("\n");$("s-aff-count").textContent=DB.aff.length+" affections";$("s-diag").value=diagList().join("\n");}
-function addAffSettings(){const v=$("s-aff-new").value.trim();if(!v)return;
+function renderReglages(){$("s-aff").value=DB.aff.join("\n");$("s-aff-count").textContent=DB.aff.length+" affections";if(!DB.diag)DB.diag=DIAG_DEFAUT.slice();$("s-diag").value=dedupe(DB.diag.concat(DB.patients.map(p=>p.diagnostic))).join("\n");}
+function addAffSettings(){const v=$("s-aff-new").value.trim();if(!v)return;$("s-aff-hint").innerHTML="";
   if(findAff(v)){toast("« "+findAff(v)+" » est déjà dans la liste");return;}
   ensureAff(v);$("s-aff-new").value="";renderReglages();}
-function saveDiag(){const l=$("s-diag").value.split("\n").map(x=>x.trim()).filter(Boolean);DB.diag=[...new Set(l)];save();refreshAffList();renderReglages();toast("Liste enregistrée ("+DB.diag.length+" diagnostics)");}
-function saveAff(){setTimeout(refreshAffList,0);const l=$("s-aff").value.split("\n").map(s=>s.trim()).filter(Boolean);if(!l.includes("Autres"))l.push("Autres");DB.aff=[...new Set(l)];save();toast("Liste enregistrée ("+DB.aff.length+" affections)");renderReglages();}
+function saveDiag(){const raw=$("s-diag").value.split("\n").map(x=>x.trim()).filter(Boolean);DB.diag=dedupe(raw);save();refreshAffList();renderReglages();const dup=raw.length-DB.diag.length;toast("Liste enregistrée ("+DB.diag.length+" diagnostics)"+(dup?" · "+dup+" doublon(s) retiré(s)":""));}
+function saveAff(){setTimeout(refreshAffList,0);const raw=$("s-aff").value.split("\n").map(s=>s.trim()).filter(Boolean);const l=dedupe(raw);if(!l.includes("Autres"))l.push("Autres");DB.aff=l;save();const dup=raw.length-dedupe(raw).length;toast("Liste enregistrée ("+DB.aff.length+" affections)"+(dup?" · "+dup+" doublon(s) retiré(s)":""));renderReglages();}
 function resetAff(){setTimeout(refreshAffList,0);DB.aff=AFF_DEFAUT.slice();save();renderReglages();toast("Liste d'origine rétablie");}
 async function exportBackup(){const photos=await photoAll();download("sauvegarde-chirurgie-visc-"+today()+".json",JSON.stringify({version:1,date:new Date().toISOString(),data:DB,photos}),"application/json");}
 function importBackup(inp){const f=inp.files[0];if(!f)return;const r=new FileReader();r.onload=async()=>{try{const o=JSON.parse(r.result);if(!o.data||!o.data.patients)throw 0;
@@ -1179,21 +1193,23 @@ function loadDemo(){
   input[data-combo]{background:#fff url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8'><path d='M1 1l5 5 5-5' stroke='%23555' fill='none' stroke-width='1.6'/></svg>") no-repeat right 9px center;padding-right:28px}`;
   document.head.appendChild(st);
   let pop=null,inp=null,idx=-1,items=[];
-  const source=t=>t==="diag"?diagList():DB.aff;
+  const source=t=>t==="diag"?diagList():t==="ind"?indList():DB.aff;
   function close(){if(pop)pop.remove();pop=null;inp=null;idx=-1;}
   function pick(v){const el=inp;close();if(!el)return;
-    if(v.add){ if(el.dataset.combo==="diag") v.val=ensureDiag(v.val); else v.val=ensureAff(v.val); }
+    if(v.add){ const t=el.dataset.combo; v.val=t==="diag"?ensureDiag(v.val):t==="ind"?ensureInd(v.val):ensureAff(v.val); }
     el.value=v.val;el.dispatchEvent(new Event("input",{bubbles:true}));el.dispatchEvent(new Event("change",{bubbles:true}));el.dispatchEvent(new Event("combopick",{bubbles:true}));}
   function open(el){
     inp=el;const q=norm(el.value);const all=source(el.dataset.combo);
-    items=all.filter(a=>!q||norm(a).includes(q)).map(a=>({val:a}));
-    if(el.value.trim()&&!all.some(a=>norm(a)===q)) items.push({val:el.value.trim(),add:true});
+    const exact=q&&all.find(a=>norm(a)===q);
+    items=all.filter(a=>!q||norm(a).includes(q)).map(a=>({val:a,exact:a===exact}));
+    items.sort((x,y)=>(y.exact?1:0)-(x.exact?1:0));
+    if(q&&!exact) items.push({val:el.value.replace(/\s+/g," ").trim(),add:true});
     if(!pop){pop=document.createElement("div");pop.className="combo-pop";document.body.appendChild(pop);
       pop.addEventListener("mousedown",e=>{e.preventDefault();const d=e.target.closest("[data-i]");if(d)pick(items[+d.dataset.i]);});}
     const r=el.getBoundingClientRect();pop.style.left=r.left+"px";pop.style.width=Math.max(r.width,220)+"px";
     const below=innerHeight-r.bottom;if(below<200&&r.top>below){pop.style.top="";pop.style.bottom=(innerHeight-r.top+2)+"px";}else{pop.style.bottom="";pop.style.top=(r.bottom+2)+"px";}
     idx=Math.min(idx,items.length-1);
-    pop.innerHTML=items.length?items.map((it,i)=>`<div data-i="${i}" class="${it.add?"add":""} ${i===idx?"on":""}">${it.add?"+ Ajouter « "+esc(it.val)+" » à la liste":esc(it.val)}</div>`).join(""):`<div class="muted">Liste vide</div>`;
+    pop.innerHTML=items.length?items.map((it,i)=>`<div data-i="${i}" class="${it.add?"add":""} ${i===idx?"on":""}">${it.add?"+ Ajouter « "+esc(it.val)+" » à la liste (nouveau)":(it.exact?"✓ "+esc(it.val)+' <span class="muted">déjà dans la liste</span>':esc(it.val))}</div>`).join(""):`<div class="muted">Liste vide</div>`;
   }
   document.addEventListener("focusin",e=>{if(e.target.matches("input[data-combo]")){idx=-1;open(e.target);}});
   document.addEventListener("click",e=>{if(e.target.matches("input[data-combo]"))open(e.target);});
@@ -1209,6 +1225,7 @@ function loadDemo(){
 
 /* Démarrage */
 (function init(){
+  DB.aff=dedupe(DB.aff); if(DB.diag) DB.diag=dedupe(DB.diag); if(DB.ind) DB.ind=dedupe(DB.ind); save();
   $("t-aff").addEventListener("combopick",()=>addAffSheet());
   $("p-mois").value=today().slice(0,7); tFillPeriod(); refreshAffList();
   const y=+today().slice(0,4); $("p-trim").innerHTML=[y,y-1].flatMap(Y=>[4,3,2,1].map(t=>`<option value="${Y}-T${t}">${t===1?"1er":t+"e"} trimestre ${Y}</option>`)).join("");
