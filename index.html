@@ -67,7 +67,26 @@ tfoot td{font-weight:700;background:#eef1ef}
 .pop .choice button.on{background:var(--accent);color:#fff;border-color:var(--accent)}
 .photo-prev{max-width:100%;max-height:340px;border:1px solid var(--line);border-radius:8px}
 .toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#222;color:#fff;padding:8px 16px;border-radius:8px;font-size:14px;z-index:30}
+/* En-tête et colonne AFFECTIONS figés pendant le défilement */
+.tscroll{overflow:auto;max-height:calc(100vh - 110px);-webkit-overflow-scrolling:touch;border:1px solid var(--line);border-radius:6px}
+table.sticky{border-collapse:separate;border-spacing:0}
+table.sticky th,table.sticky td{border-width:0 1px 1px 0}
+table.sticky thead th{position:sticky;top:0;z-index:2;background:#eef1ef}
+table.sticky thead tr:nth-child(2) th{top:var(--h1,34px)}
+table.sticky tbody td:first-child,table.sticky tfoot td:first-child{position:sticky;left:0;z-index:1;background:#fff;box-shadow:1px 0 0 var(--line)}
+table.sticky thead tr:first-child th:first-child{left:0;z-index:3}
+table.sticky tfoot td{position:sticky;bottom:0;z-index:1}
+table.sticky tfoot td:first-child{z-index:2;background:#eef1ef}
+table.sticky tr.mismatch td.aff{box-shadow:inset 4px 0 0 var(--warn),1px 0 0 var(--line)}
+@media (max-width:700px){
+  .tac td.aff{white-space:normal;min-width:120px;max-width:150px;font-size:14px}
+  .tac td.aff .add{display:block;margin:4px 0 0}
+  .tac td.cell{min-width:58px}
+  table.sticky th{font-size:12px}
+}
 @media print{
+  .tscroll{max-height:none;overflow:visible;border:0}
+  table.sticky thead th,table.sticky td{position:static!important}
   header,nav,.noprint,.btn{display:none!important}
   body{background:#fff} main{padding:0} .card{border:0;padding:0}
   section.view{display:none!important} section.view.printme{display:block!important}
@@ -158,7 +177,7 @@ tfoot td{font-weight:700;background:#eef1ef}
   </div>
   <div class="card">
     <h2 id="t-title"></h2>
-    <div style="overflow:auto"><table class="tac" id="t-table"></table></div>
+    <div class="tscroll"><table class="tac sticky" id="t-table"></table></div>
     <div id="t-check"></div>
   </div>
 </section>
@@ -186,7 +205,7 @@ tfoot td{font-weight:700;background:#eef1ef}
     <div style="font-weight:700">CENTRE HOSPITALIER RÉGIONAL EL HADJI AHMADOU SAKHIR NDIEGUÈNE DE THIÈS</div>
     <div class="muted" id="p-sub"></div>
     <h2 id="p-title" style="font-size:18px;margin-top:6px"></h2>
-    <div style="overflow:auto"><table id="p-table"></table></div>
+    <div class="tscroll"><table class="sticky" id="p-table"></table></div>
     <div id="p-notes"></div>
   </div>
 </section>
@@ -932,6 +951,8 @@ function tallySVG(n){
   for(let i=0;i<full;i++) parts.push(box(5)); if(rest) parts.push(box(rest));
   return `<span class="tal">${parts.join("")}</span>`;
 }
+function stickyH(id){const t=$(id),r=t.querySelector("thead tr");if(r)requestAnimationFrame(()=>t.style.setProperty("--h1",r.getBoundingClientRect().height+"px"));}
+window.addEventListener("resize",()=>{stickyH("t-table");stickyH("p-table");});
 function renderTacojo(){
   if(!$("t-mois").value) tFillPeriod();
   const kind=$("t-sheet").value, cols=COLS[kind], sheet=tSheet(false);
@@ -959,7 +980,7 @@ function renderTacojo(){
     h+="</tr>";
   });
   h+=`</tbody><tfoot><tr><td>TOTAL</td>`+cols.map(c=>`<td class="num">${totals[c.k]||0}</td>`).join("")+`</tr></tfoot>`;
-  $("t-table").innerHTML=h;
+  $("t-table").innerHTML=h; stickyH("t-table");
   $("t-table").querySelectorAll("td.cell").forEach(td=>td.onclick=()=>bump(td.dataset.a,td.dataset.k,tMode==="moins"?-1:1));
   const refL=kind==="consultation"?"nouveaux + anciens":"nombre de malades hospitalisés";
   $("t-check").innerHTML=mism.length?`<div class="hint">Vérification : pour ${mism.length} affection(s) (${esc(mism.join(", "))}), le total M + F ne correspond pas au ${refL}. Ces lignes sont marquées en orange.</div>`:
@@ -1065,7 +1086,7 @@ function renderRapport(){
     h+=`<tr><td>${esc(a)}</td>`+vals.map((v,i)=>`<td class="num" ${cols[i].calc?'style="background:var(--yellow);font-weight:700"':""}>${v}</td>`).join("")+`</tr>`;});
   const totRow=["TOTAL",...cols.map((c,i)=>tot[i]||0)]; data.push(totRow);
   h+=`</tbody><tfoot><tr>`+totRow.map((v,i)=>`<td class="${i?"num":""}">${v}</td>`).join("")+`</tr></tfoot>`;
-  $("p-table").innerHTML=h;
+  $("p-table").innerHTML=h; stickyH("p-table");
   const n=[];
   if(notes.moins16) n.push(`${notes.moins16} patient(s) de moins de 16 ans : comptés dans le sexe mais pas dans les colonnes d'âge.`);
   if(notes.sansAff) n.push(`${notes.sansAff} fiche(s) sans affection, rangées dans « Autres ».`);
