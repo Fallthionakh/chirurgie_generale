@@ -249,6 +249,7 @@ table.sticky tr.mismatch td.aff{box-shadow:inset 4px 0 0 var(--warn),1px 0 0 var
 </main>
 
 <datalist id="aff-list"></datalist>
+<datalist id="diag-list"></datalist>
 <div id="pop"></div>
 
 <script>
@@ -408,7 +409,7 @@ async function openPatient(id,opt={}){
     </div>
     <h3 style="font-size:14px;margin:14px 0 6px">Bloc opératoire (facultatif)</h3>
     <div class="grid">
-      <label>Diagnostic<input id="f-diag" value="${esc(p.diagnostic)}"></label>
+      <label>Diagnostic<input id="f-diag" list="diag-list" value="${esc(p.diagnostic)}" placeholder="Tapez pour chercher…" oninput="diagHint()"><span id="f-diag-hint" class="muted"></span></label>
       <label>Indication / intervention<input id="f-ind" value="${esc(p.indication)}"></label>
       <label>Date d'intervention<input type="date" id="f-di" value="${esc(p.dateIntervention)}"></label>
     </div>
@@ -438,7 +439,7 @@ async function openPatient(id,opt={}){
     <div class="row"><button class="btn ghost" onclick="closePop()">Annuler</button><button class="btn" onclick="savePatient(${isNew?"null":`'${p.id}'`})">Enregistrer</button></div>
   </div></div></div>`;
   window._photo=null; window._photoOrig=null;
-  ptype(); affHint();
+  ptype(); affHint(); diagHint();
   if(p.hasPhoto){const ph=await photoGet(p.id); if(ph){window._photo=ph;showPhoto(ph);}}
   if(opt.photo) setTimeout(()=>$("f-photo").click(),50);
 }
@@ -897,7 +898,7 @@ async function savePatient(id){
   if(p.vpa){const dup=DB.patients.find(x=>x.vpa===p.vpa&&x.id!==id&&x.type===p.type&&pDate(x)===(p.type==="hospitalisation"?p.dateEntree:p.dateConsult));
     if(dup&&!window._dupOk){window._dupOk=true;$("f-warn").innerHTML=`<div class="hint">Une fiche avec le même N° VPA existe déjà à cette date (${esc(dup.prenom)} ${esc(dup.nom)}). Cliquez encore sur Enregistrer pour confirmer.</div>`;return;}}
   window._dupOk=false;
-  p.affection=ensureAff(p.affection);
+  p.affection=ensureAff(p.affection); p.diagnostic=ensureDiag(p.diagnostic);
   let rec;
   if(id){rec=DB.patients.find(x=>x.id===id);Object.assign(rec,p);}
   else{rec=Object.assign({id:uid(),createdAt:new Date().toISOString()},p);DB.patients.push(rec);}
@@ -924,7 +925,16 @@ function tFillPeriod(){
   $("t-jour").innerHTML=`<option value="">Tout le mois</option>`+Array.from({length:31},(_,i)=>`<option value="${String(i+1).padStart(2,"0")}">${i+1}</option>`).join("");
   $("t-mois").value=t.slice(5,7); $("t-annee").value=String(y);
 }
-function refreshAffList(){$("aff-list").innerHTML=DB.aff.map(a=>`<option value="${esc(a)}">`).join("");}
+/* Diagnostics : liste qui grandit avec les saisies (déjà saisis + ajoutés) */
+const DIAG_DEFAUT=["VCS avec colostomie","H.I.G.","Fistule anale","Lithiase vésiculaire symptomatique","Colostomie selon BV"];
+function diagList(){if(!DB.diag)DB.diag=DIAG_DEFAUT.slice();const all=DB.diag.slice();
+  DB.patients.forEach(p=>{if(p.diagnostic&&!all.some(d=>norm(d)===norm(p.diagnostic)))all.push(p.diagnostic);});
+  return all.sort((a,b)=>a.localeCompare(b,"fr"));}
+function findDiag(v){return diagList().find(d=>norm(d)===norm(v));}
+function ensureDiag(v){v=String(v||"").trim();if(!v)return "";const ex=findDiag(v);if(ex)return ex;
+  if(!DB.diag)DB.diag=DIAG_DEFAUT.slice();DB.diag.push(v);save();refreshAffList();toast("« "+v+" » ajouté à la liste des diagnostics");return v;}
+function diagHint(){const v=$("f-diag").value.trim();$("f-diag-hint").textContent=v&&!findDiag(v)?"Nouveau diagnostic : il sera ajouté à la liste à l'enregistrement.":"";}
+function refreshAffList(){$("diag-list").innerHTML=diagList().map(d=>`<option value="${esc(d)}">`).join("");$("aff-list").innerHTML=DB.aff.map(a=>`<option value="${esc(a)}">`).join("");}
 /* Retrouve une affection existante sans tenir compte des accents ni des majuscules */
 const norm=s=>String(s||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().trim();
 function findAff(v){return DB.aff.find(a=>norm(a)===norm(v));}
