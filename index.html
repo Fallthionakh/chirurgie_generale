@@ -84,10 +84,22 @@ table.sticky tr.mismatch td.aff{box-shadow:inset 4px 0 0 var(--warn),1px 0 0 var
   .tac td.cell{min-width:58px}
   table.sticky th{font-size:12px}
 }
+/* Programme opératoire, mis en page comme le document Word du service */
+#o-doc{font-family:"Times New Roman",Georgia,serif}
+.po-head{font-size:12px;font-weight:700;letter-spacing:.3px}
+.po-title{text-align:center;font-size:22px;font-weight:800;font-style:italic;text-decoration:underline;margin:16px 0 8px}
+.po-per{text-align:center;margin-bottom:14px}.po-per span{display:inline-block;border:3px double #000;padding:3px 14px;font-size:18px;font-weight:700;font-style:italic}
+table.po th,table.po td{border:1px solid #000;font-size:15px}
+table.po th{background:#fff;font-style:italic;text-align:center}
+table.po td{font-weight:700;font-style:italic;text-align:center}
+table.po td:first-child{text-align:left}
+table.po .po-nom{display:flex;justify-content:space-between;gap:14px}
+table.po tr.po-day td{text-align:center;font-style:normal;font-size:16px;background:#fff}
+table.po tr.po-blank td{height:22px}
 @media print{
   .tscroll{max-height:none;overflow:visible;border:0}
   table.sticky thead th,table.sticky td{position:static!important}
-  header,nav,.noprint,.btn{display:none!important}
+  header,nav,.noprint,.btn,.toast,.combo-pop{display:none!important}
   body{background:#fff} main{padding:0} .card{border:0;padding:0}
   section.view{display:none!important} section.view.printme{display:block!important}
   th{background:#eee!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
@@ -217,14 +229,21 @@ table.sticky tr.mismatch td.aff{box-shadow:inset 4px 0 0 var(--warn),1px 0 0 var
     <div class="row">
       <label>Du<input type="date" id="o-du" onchange="renderProgramme()"></label>
       <label>Au<input type="date" id="o-au" onchange="renderProgramme()"></label>
-      <button class="btn ghost" onclick="printView('programme')">Imprimer</button>
+      <button class="btn ghost small" onclick="progWeek(-7)">◀ Semaine précédente</button>
+      <button class="btn ghost small" onclick="progWeek(7)">Semaine suivante ▶</button>
     </div>
-    <p class="muted">Liste les patients du registre qui ont une date d'intervention dans la période.</p>
+    <div class="row" style="margin-top:10px">
+      <button class="btn" onclick="progEdit()">+ Ajouter un patient au programme</button>
+      <button class="btn ghost" onclick="printView('programme')">Imprimer / PDF</button>
+      <button class="btn ghost" onclick="progWord()">Télécharger en Word</button>
+    </div>
+    <p class="muted">Ajoutez les patients jour par jour. Un patient pris dans le registre garde sa date d'intervention dans sa fiche. Pour enregistrer en PDF, choisissez « Enregistrer au format PDF » dans la fenêtre d'impression.</p>
   </div>
-  <div class="card">
-    <div style="font-weight:700">CENTRE HOSPITALIER RÉGIONAL DE THIÈS · SERVICES CHIRURGICAUX</div>
-    <h2 id="o-title" style="text-align:center;font-size:18px"></h2>
-    <table id="o-table"></table>
+  <div class="card" id="o-doc">
+    <div class="po-head">CENTRE HOSPITALIER RÉGIONAL DE THIÈS<br><br>SERVICES CHIRURGICAUX</div>
+    <div class="po-title">PROGRAMME OPÉRATOIRE CHIRURGIE VISCÉRALE</div>
+    <div class="po-per"><span id="o-per"></span></div>
+    <table id="o-table" class="po"></table>
   </div>
 </section>
 
@@ -1152,17 +1171,97 @@ function download(name,content,type){const a=document.createElement("a");a.href=
 /* =========================================================
    PROGRAMME OPÉRATOIRE
    ========================================================= */
+const JOURS=["DIMANCHE","LUNDI","MARDI","MERCREDI","JEUDI","VENDREDI","SAMEDI"];
+function progDefault(){const d=new Date();const day=(d.getDay()+6)%7;d.setDate(d.getDate()-day);$("o-du").value=d.toISOString().slice(0,10);d.setDate(d.getDate()+4);$("o-au").value=d.toISOString().slice(0,10);}
+function progWeek(n){const sh=x=>{const d=new Date(x);d.setDate(d.getDate()+n);return d.toISOString().slice(0,10);};$("o-du").value=sh($("o-du").value);$("o-au").value=sh($("o-au").value);renderProgramme();}
+/* Lignes du programme : patients du registre ayant une date d'intervention + patients saisis seulement pour le programme (DB.prog) */
+function progRows(d1,d2){
+  if(!DB.prog) DB.prog=[];
+  const rows=DB.patients.filter(p=>p.dateIntervention).map(p=>({src:"p",id:p.id,date:p.dateIntervention,prenom:p.prenom,nom:p.nom,age:p.age,vpa:p.vpa,diagnostic:p.diagnostic||p.affection,indication:p.indication,ordre:p.ordreProg||0}))
+    .concat(DB.prog.map(x=>Object.assign({src:"x"},x)));
+  return rows.filter(r=>r.date>=d1&&r.date<=d2).sort((a,b)=>a.date.localeCompare(b.date)||(a.ordre||0)-(b.ordre||0));
+}
+function progPeriodLabel(d1,d2){
+  const a=new Date(d1),b=new Date(d2),M=m=>MOIS[m];
+  if(d1===d2) return "Le "+a.getDate()+" "+M(a.getMonth())+" "+a.getFullYear();
+  if(a.getMonth()===b.getMonth()&&a.getFullYear()===b.getFullYear()) return "Du "+a.getDate()+" au "+b.getDate()+" "+M(b.getMonth())+" "+b.getFullYear();
+  return "Du "+a.getDate()+" "+M(a.getMonth())+(a.getFullYear()!==b.getFullYear()?" "+a.getFullYear():"")+" au "+b.getDate()+" "+M(b.getMonth())+" "+b.getFullYear();
+}
+function progTableHTML(rows,edit){
+  let h=`<thead><tr><th style="width:26%">PRÉNOMS ET NOM</th><th class="num" style="width:9%">ÂGES</th><th class="num" style="width:11%">V.P.A</th><th style="width:27%">DIAGNOSTICS</th><th style="width:27%">INDICATIONS</th>${edit?'<th class="noprint"></th>':""}</tr></thead><tbody>`,cur="";
+  const cols=edit?6:5;
+  rows.forEach(r=>{
+    if(r.date!==cur){ if(cur&&!edit) h+=`<tr class="po-blank">${"<td></td>".repeat(5)}</tr>`; cur=r.date;const dt=new Date(cur);
+      h+=`<tr class="po-day"><td colspan="${cols}">${JOURS[dt.getDay()]} ${dt.getDate()}${edit?` <button class="btn ghost small noprint" style="margin-left:8px" onclick="progEdit(null,'${cur}')">+ patient ce jour</button>`:""}</td></tr>`;}
+    h+=`<tr><td><span class="po-nom"><span>${esc(r.prenom||"").toUpperCase()}</span><span>${esc(r.nom||"").toUpperCase()}</span></span></td><td class="num">${r.age?esc(r.age)+" ans":""}</td><td class="num">${esc(r.vpa)}</td><td class="num">${esc(r.diagnostic)}</td><td class="num">${esc(r.indication)}</td>`+
+      (edit?`<td class="noprint" style="white-space:nowrap"><button class="btn ghost small" onclick="progEdit('${r.src}:${r.id}')">Modifier</button> <button class="btn danger small" onclick="progDel('${r.src}:${r.id}')">Retirer</button></td>`:"")+`</tr>`;
+  });
+  if(rows.length&&!edit) h+=`<tr class="po-blank">${"<td></td>".repeat(5)}</tr>`;
+  if(!rows.length) h+=`<tr><td colspan="${cols}" class="muted" style="text-align:center;padding:18px">Aucun patient programmé sur cette période. Cliquez sur « + Ajouter un patient au programme ».</td></tr>`;
+  return h+"</tbody>";
+}
 function renderProgramme(){
-  if(!$("o-du").value){const d=new Date();const day=(d.getDay()+6)%7;d.setDate(d.getDate()-day);$("o-du").value=d.toISOString().slice(0,10);d.setDate(d.getDate()+6);$("o-au").value=d.toISOString().slice(0,10);}
+  if(!$("o-du").value) progDefault();
   const d1=$("o-du").value,d2=$("o-au").value;
-  $("o-title").textContent="PROGRAMME OPÉRATOIRE CHIRURGIE VISCÉRALE · du "+fmtD(d1)+" au "+fmtD(d2);
-  const list=DB.patients.filter(p=>p.dateIntervention&&p.dateIntervention>=d1&&p.dateIntervention<=d2).sort((a,b)=>a.dateIntervention.localeCompare(b.dateIntervention));
-  const J=["DIMANCHE","LUNDI","MARDI","MERCREDI","JEUDI","VENDREDI","SAMEDI"];
-  let h=`<thead><tr><th>PRÉNOMS ET NOM</th><th class="num">ÂGE</th><th class="num">V.P.A</th><th>DIAGNOSTIC</th><th>INDICATION</th></tr></thead><tbody>`, cur="";
-  list.forEach(p=>{if(p.dateIntervention!==cur){cur=p.dateIntervention;const dt=new Date(cur);h+=`<tr><th colspan="5" style="text-align:center">${J[dt.getDay()]} ${dt.getDate()}</th></tr>`;}
-    h+=`<tr><td>${esc(p.prenom)} <b>${esc(p.nom)}</b></td><td class="num">${esc(p.age)} ans</td><td class="num">${esc(p.vpa)}</td><td>${esc(p.diagnostic||p.affection)}</td><td>${esc(p.indication)}</td></tr>`;});
-  if(!list.length) h+=`<tr><td colspan="5" class="muted">Aucune intervention programmée sur cette période. Renseignez la date d'intervention dans la fiche du patient.</td></tr>`;
-  $("o-table").innerHTML=h+"</tbody>";
+  $("o-per").textContent=progPeriodLabel(d1,d2);
+  $("o-table").innerHTML=progTableHTML(progRows(d1,d2),true);
+}
+function progEdit(key,date){
+  if(!DB.prog) DB.prog=[];
+  let r={date:date||$("o-du").value};
+  if(key){const [src,id]=key.split(":");
+    if(src==="p"){const p=DB.patients.find(x=>x.id===id);r={src,id,date:p.dateIntervention,prenom:p.prenom,nom:p.nom,age:p.age,vpa:p.vpa,diagnostic:p.diagnostic||p.affection,indication:p.indication};}
+    else r=Object.assign({src},DB.prog.find(x=>x.id===id));}
+  const pats=DB.patients.slice().sort((a,b)=>(pDate(b)||"").localeCompare(pDate(a)||""));
+  $("pop").innerHTML=`<div class="pop"><div class="box" style="width:620px">
+    <h2 style="margin-top:0">${key?"Modifier la ligne du programme":"Ajouter un patient au programme"}</h2>
+    ${key?"":`<label>Prendre un patient du registre (facultatif)<select id="pg-pat" onchange="progFill(this.value)"><option value="">— Nouveau patient, saisie directe —</option>${pats.map(p=>`<option value="${p.id}">${esc(p.prenom)} ${esc(p.nom)}${p.vpa?" · "+esc(p.vpa):""}${p.age?" · "+esc(p.age)+" ans":""}</option>`).join("")}</select></label>`}
+    <div class="grid" style="margin-top:10px">
+      <label>Jour de l'intervention<input type="date" id="pg-date" value="${esc(r.date)}"></label>
+      <label>Prénom<input id="pg-prenom" value="${esc(r.prenom)}"></label>
+      <label>Nom<input id="pg-nom" value="${esc(r.nom)}"></label>
+      <label>Âge (ans)<input id="pg-age" type="number" value="${esc(r.age)}"></label>
+      <label>N° VPA<input id="pg-vpa" value="${esc(r.vpa)}" placeholder="ex. 26/1556"></label>
+    </div>
+    <div class="grid" style="grid-template-columns:1fr 1fr;margin-top:10px">
+      <label>Diagnostic<input id="pg-diag" data-combo="diag" autocomplete="off" value="${esc(r.diagnostic)}" placeholder="Tapez pour chercher…" oninput="listHint('pg-diag-h',this.value,findDiag(this.value),'diagnostic')"><span id="pg-diag-h" class="muted"></span></label>
+      <label>Indication<input id="pg-ind" data-combo="ind" autocomplete="off" value="${esc(r.indication)}" placeholder="Tapez pour chercher…" oninput="listHint('pg-ind-h',this.value,findInd(this.value),'libellé')"><span id="pg-ind-h" class="muted"></span></label>
+    </div>
+    <div id="pg-warn"></div>
+    <div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn ghost" onclick="closePop()">Annuler</button><button class="btn" onclick="progSave('${key||""}')">Enregistrer</button></div>
+  </div></div>`;
+}
+function progFill(id){const p=DB.patients.find(x=>x.id===id);if(!p)return;
+  [["pg-prenom",p.prenom],["pg-nom",p.nom],["pg-age",p.age],["pg-vpa",p.vpa],["pg-diag",p.diagnostic||p.affection],["pg-ind",p.indication]].forEach(([k,v])=>{$(k).value=v||"";});
+  if(p.dateIntervention)$("pg-date").value=p.dateIntervention;}
+function progSave(key){
+  const v=k=>$(k).value.trim();
+  const r={date:v("pg-date"),prenom:v("pg-prenom"),nom:v("pg-nom").toUpperCase(),age:v("pg-age"),vpa:v("pg-vpa"),diagnostic:ensureDiag(v("pg-diag")),indication:ensureInd(v("pg-ind"))};
+  const miss=[[!r.date,"le jour","pg-date"],[!r.nom&&!r.prenom,"le nom","pg-nom"],[!r.diagnostic,"le diagnostic","pg-diag"],[!r.indication,"l'indication","pg-ind"]].filter(x=>x[0]);
+  if(miss.length){$("pg-warn").innerHTML=`<div class="hint" style="border-left-color:var(--danger);background:#fbe9e9">Il manque ${miss.map(x=>x[1]).join(", ")}.</div>`;$(miss[0][2]).focus();return;}
+  let src="",id="";
+  if(key)[src,id]=key.split(":"); else if($("pg-pat")&&$("pg-pat").value){src="p";id=$("pg-pat").value;}
+  if(src==="p"){const p=DB.patients.find(x=>x.id===id);
+    Object.assign(p,{dateIntervention:r.date,prenom:r.prenom,nom:r.nom,age:r.age,vpa:r.vpa,diagnostic:r.diagnostic,indication:r.indication});}
+  else if(src==="x"){Object.assign(DB.prog.find(x=>x.id===id),r);}
+  else DB.prog.push(Object.assign({id:uid(),ordre:Date.now()},r));
+  if(r.date<$("o-du").value||r.date>$("o-au").value){$("o-du").value=r.date<$("o-du").value?r.date:$("o-du").value;$("o-au").value=r.date>$("o-au").value?r.date:$("o-au").value;}
+  save();closePop();renderProgramme();toast("Programme mis à jour");
+}
+function progDel(key){const [src,id]=key.split(":");
+  if(!confirm("Retirer ce patient du programme ?"))return;
+  if(src==="p"){DB.patients.find(x=>x.id===id).dateIntervention="";} else DB.prog=DB.prog.filter(x=>x.id!==id);
+  save();renderProgramme();toast("Patient retiré du programme");}
+function progWord(){
+  const d1=$("o-du").value,d2=$("o-au").value;
+  const css=`body{font-family:'Times New Roman',serif}.h{font-size:10pt;font-weight:bold}.t{text-align:center;font-size:18pt;font-weight:bold;font-style:italic;text-decoration:underline;margin:14pt 0 6pt}.p{text-align:center;margin-bottom:12pt}.p span{border:2pt double #000;padding:3pt 10pt;font-size:14pt;font-weight:bold;font-style:italic}
+   table{border-collapse:collapse;width:100%}th,td{border:1pt solid #000;padding:4pt 6pt;font-size:12pt}th{font-style:italic;font-weight:bold}td{font-weight:bold;font-style:italic;text-align:center}td:first-child{text-align:left}tr.po-day td{text-align:center;font-style:normal;font-size:13pt}tr.po-blank td{height:16pt}`;
+  const rows=progRows(d1,d2);
+  let tbl=progTableHTML(rows,false).replace(/<span class="po-nom"><span>(.*?)<\/span><span>(.*?)<\/span><\/span>/g,"$1 &nbsp;&nbsp;&nbsp; $2");
+  const html=`<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word"><head><meta charset="utf-8"><style>@page{size:21cm 29.7cm;margin:1.5cm}${css}</style></head><body>
+   <div class="h">CENTRE HOSPITALIER REGIONAL DE THIES</div><br><div class="h">SERVICES CHIRURGICAUX</div>
+   <div class="t">PROGRAMME OPERATOIRE CHIRURGIE VISCERALE</div><div class="p"><span>${esc(progPeriodLabel(d1,d2))}</span></div><table>${tbl}</table></body></html>`;
+  download("Programme_operatoire_"+d1+"_au_"+d2+".doc","﻿"+html,"application/msword");
 }
 
 /* =========================================================
