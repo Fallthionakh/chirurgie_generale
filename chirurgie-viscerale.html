@@ -1,0 +1,1100 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chirurgie viscérale · Registre & TACOJO</title>
+<style>
+:root{
+  --bg:#f5f6f4; --card:#fff; --ink:#1d2421; --muted:#5f6b66; --line:#d9dfdc;
+  --accent:#0f6e5a; --accent-soft:#e3f1ed; --warn:#b5531a; --warn-soft:#fbeee4; --danger:#a32020;
+  --tally:#1f4fa8; --yellow:#fff7c2;
+}
+*{box-sizing:border-box}
+body{margin:0;font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink)}
+header{background:var(--accent);color:#fff;padding:10px 18px;display:flex;flex-wrap:wrap;align-items:center;gap:14px}
+header h1{font-size:17px;margin:0;font-weight:600}
+header small{opacity:.8}
+nav{display:flex;gap:4px;flex-wrap:wrap;margin-left:auto}
+nav button{background:transparent;border:1px solid rgba(255,255,255,.35);color:#fff;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:14px}
+nav button.on{background:#fff;color:var(--accent);font-weight:600}
+main{padding:16px;max-width:1280px;margin:0 auto}
+section.view{display:none} section.view.on{display:block}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:14px}
+.card h2{font-size:16px;margin:0 0 10px}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px 12px}
+label{display:flex;flex-direction:column;font-size:13px;color:var(--muted);gap:3px}
+input,select,textarea{font:inherit;padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:#fff;color:var(--ink)}
+textarea{min-height:54px}
+button{font:inherit;cursor:pointer}
+.btn{background:var(--accent);color:#fff;border:0;border-radius:6px;padding:7px 14px}
+.btn.ghost{background:#fff;color:var(--accent);border:1px solid var(--accent)}
+.btn.small{padding:3px 9px;font-size:13px}
+.btn.danger{background:#fff;color:var(--danger);border:1px solid var(--danger)}
+.seg{display:inline-flex;border:1px solid var(--accent);border-radius:6px;overflow:hidden}
+.seg button{border:0;background:#fff;color:var(--accent);padding:6px 12px}
+.seg button.on{background:var(--accent);color:#fff}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{border:1px solid var(--line);padding:5px 7px;text-align:left;vertical-align:middle}
+th{background:#eef1ef;font-weight:600;font-size:13px}
+td.num,th.num{text-align:center}
+tfoot td{font-weight:700;background:#eef1ef}
+.hide{display:none!important}
+.muted{color:var(--muted);font-size:13px}
+.hint{background:var(--warn-soft);border-left:4px solid var(--warn);padding:8px 12px;border-radius:6px;font-size:13px;margin:8px 0}
+.ok{background:var(--accent-soft);border-left:4px solid var(--accent);padding:8px 12px;border-radius:6px;font-size:13px;margin:8px 0}
+.pill{display:inline-block;padding:1px 8px;border-radius:20px;font-size:12px;background:#eef1ef}
+.pill.h{background:#e6ecfa;color:#1f3f8a}.pill.n{background:var(--accent-soft);color:var(--accent)}.pill.a{background:#f3ecdc;color:#7a5a12}.pill.d{background:#f8e1e1;color:var(--danger)}
+.stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 14px}
+.stat b{display:block;font-size:26px}
+/* TACOJO */
+.tac td.cell{cursor:pointer;min-width:74px;height:40px;user-select:none;position:relative}
+.tac td.cell:hover{background:#f2f7ff}
+.tac td.cell .n{position:absolute;right:4px;bottom:1px;font-size:11px;color:var(--muted)}
+.tac td.calc{background:var(--yellow);text-align:center;font-weight:700}
+.tac tr.mismatch td.aff{box-shadow:inset 4px 0 0 var(--warn)}
+.tac td.aff{white-space:nowrap}
+.tac .add{margin-left:6px}
+.tac input.cellin{width:60px;text-align:center;padding:3px}
+.tal{display:inline-flex;flex-wrap:wrap;gap:2px;max-width:150px}
+.tal svg{display:block}
+.pop{position:fixed;inset:0;background:rgba(0,0,0,.3);display:flex;align-items:center;justify-content:center;z-index:20}
+.pop .box{background:#fff;border-radius:12px;padding:18px;min-width:300px;max-width:92vw;max-height:92vh;overflow:auto}
+.pop .choice{display:flex;gap:8px;margin:6px 0 12px}
+.pop .choice button{flex:1;padding:10px;border:1px solid var(--line);background:#fff;border-radius:8px;font-size:15px}
+.pop .choice button.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+.photo-prev{max-width:100%;max-height:340px;border:1px solid var(--line);border-radius:8px}
+.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#222;color:#fff;padding:8px 16px;border-radius:8px;font-size:14px;z-index:30}
+@media print{
+  header,nav,.noprint,.btn{display:none!important}
+  body{background:#fff} main{padding:0} .card{border:0;padding:0}
+  section.view{display:none!important} section.view.printme{display:block!important}
+  th{background:#eee!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .tac td.calc{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+.doute input,.doute select,input.doute,select.doute{background:#fff6d6!important;border-color:#e0b100!important}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>Service de chirurgie viscérale · CHR de Thiès</h1>
+    <small>Registre des patients, TACOJO numérique et rapports mensuels</small>
+  </div>
+  <nav id="nav">
+    <button data-v="accueil" class="on">Accueil</button>
+    <button data-v="registre">Registre</button>
+    <button data-v="tacojo">TACOJO</button>
+    <button data-v="rapports">Rapports</button>
+    <button data-v="programme">Programme opératoire</button>
+    <button data-v="reglages">Réglages</button>
+  </nav>
+</header>
+<main>
+
+<!-- ================= ACCUEIL ================= -->
+<section class="view on" id="v-accueil">
+  <div class="card">
+    <h2>Ce mois-ci (<span id="acc-mois"></span>)</h2>
+    <div class="stats" id="acc-stats"></div>
+  </div>
+  <div class="card">
+    <h2>Que voulez-vous faire ?</h2>
+    <div class="row">
+      <button class="btn" onclick="openPatient()">+ Enregistrer un patient</button>
+      <button class="btn ghost" onclick="openPatient(null,{photo:true})">📷 Enregistrer depuis une photo de reçu</button>
+      <button class="btn ghost" onclick="go('tacojo')">Ouvrir la feuille TACOJO du jour</button>
+      <button class="btn ghost" onclick="go('rapports')">Produire le rapport du mois</button>
+    </div>
+    <p class="muted">Les données restent sur cet ordinateur (dans le navigateur). Pensez à faire une sauvegarde régulière depuis <a href="#" onclick="go('reglages');return false">Réglages</a>.</p>
+  </div>
+</section>
+
+<!-- ================= REGISTRE ================= -->
+<section class="view" id="v-registre">
+  <div class="card noprint">
+    <div class="row">
+      <button class="btn" onclick="openPatient()">+ Nouveau patient</button>
+      <button class="btn ghost" onclick="openPatient(null,{photo:true})">📷 Depuis une photo de reçu</button>
+      <label>Recherche<input id="r-q" placeholder="Nom, VPA, affection…" oninput="renderRegistre()"></label>
+      <label>Type<select id="r-type" onchange="renderRegistre()"><option value="">Tous</option><option value="consultation">Consultations</option><option value="hospitalisation">Hospitalisations</option></select></label>
+      <label>Mois<input type="month" id="r-mois" onchange="renderRegistre()"></label>
+      <button class="btn ghost small" onclick="document.getElementById('r-mois').value='';renderRegistre()">Tous les mois</button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="muted" id="r-count"></div>
+    <div style="overflow:auto"><table id="r-table"></table></div>
+  </div>
+</section>
+
+<!-- ================= TACOJO ================= -->
+<section class="view" id="v-tacojo">
+  <div class="card noprint">
+    <div class="row">
+      <label>Feuille<select id="t-sheet" onchange="renderTacojo()"><option value="consultation">Consultations</option><option value="hospitalisation">Hospitalisations</option></select></label>
+      <label>Date de la feuille<input type="date" id="t-date" onchange="renderTacojo()"></label>
+      <div>
+        <div class="muted" style="margin-bottom:3px">Mode</div>
+        <div class="seg" id="t-mode">
+          <button data-m="plus" class="on">Clic = +1</button>
+          <button data-m="moins">Clic = −1</button>
+          <button data-m="saisie">Saisir des totaux</button>
+        </div>
+      </div>
+      <button class="btn ghost small" onclick="undoTacojo()">↶ Annuler</button>
+      <button class="btn ghost small" onclick="printView('tacojo')">Imprimer</button>
+    </div>
+    <p class="muted" id="t-help"></p>
+  </div>
+  <div class="card">
+    <h2 id="t-title"></h2>
+    <div style="overflow:auto"><table class="tac" id="t-table"></table></div>
+    <div id="t-check"></div>
+  </div>
+</section>
+
+<!-- ================= RAPPORTS ================= -->
+<section class="view" id="v-rapports">
+  <div class="card noprint">
+    <div class="row">
+      <label>Rapport<select id="p-kind" onchange="renderRapport()"><option value="consultation">Consultations (grille TACOJO)</option><option value="hospitalisation">Hospitalisation viscérale</option></select></label>
+      <label>Période<select id="p-per" onchange="perChange()"><option value="mois">Mois</option><option value="trim">Trimestre</option><option value="libre">Dates libres</option></select></label>
+      <label id="p-mois-l">Mois<input type="month" id="p-mois" onchange="renderRapport()"></label>
+      <label id="p-trim-l" class="hide">Trimestre<select id="p-trim" onchange="renderRapport()"></select></label>
+      <label id="p-du-l" class="hide">Du<input type="date" id="p-du" onchange="renderRapport()"></label>
+      <label id="p-au-l" class="hide">Au<input type="date" id="p-au" onchange="renderRapport()"></label>
+      <label>Source<select id="p-src" onchange="renderRapport()"><option value="both">Registre + TACOJO</option><option value="reg">Registre seul</option><option value="tac">TACOJO seul</option></select></label>
+      <label class="row" style="flex-direction:row;align-items:center;gap:6px"><input type="checkbox" id="p-empty" onchange="renderRapport()">Masquer les lignes vides</label>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <button class="btn" onclick="exportRapportCSV()">Exporter vers Excel (CSV)</button>
+      <button class="btn ghost" onclick="printView('rapports')">Imprimer</button>
+    </div>
+    <div class="hint">Si un même patient est à la fois noté au TACOJO et saisi dans le registre, choisissez une seule source pour éviter de le compter deux fois.</div>
+  </div>
+  <div class="card">
+    <div style="font-weight:700">CENTRE HOSPITALIER RÉGIONAL EL HADJI AHMADOU SAKHIR NDIEGUÈNE DE THIÈS</div>
+    <div class="muted" id="p-sub"></div>
+    <h2 id="p-title" style="font-size:18px;margin-top:6px"></h2>
+    <div style="overflow:auto"><table id="p-table"></table></div>
+    <div id="p-notes"></div>
+  </div>
+</section>
+
+<!-- ================= PROGRAMME ================= -->
+<section class="view" id="v-programme">
+  <div class="card noprint">
+    <div class="row">
+      <label>Du<input type="date" id="o-du" onchange="renderProgramme()"></label>
+      <label>Au<input type="date" id="o-au" onchange="renderProgramme()"></label>
+      <button class="btn ghost" onclick="printView('programme')">Imprimer</button>
+    </div>
+    <p class="muted">Liste les patients du registre qui ont une date d'intervention dans la période.</p>
+  </div>
+  <div class="card">
+    <div style="font-weight:700">CENTRE HOSPITALIER RÉGIONAL DE THIÈS · SERVICES CHIRURGICAUX</div>
+    <h2 id="o-title" style="text-align:center;font-size:18px"></h2>
+    <table id="o-table"></table>
+  </div>
+</section>
+
+<!-- ================= REGLAGES ================= -->
+<section class="view" id="v-reglages">
+  <div class="card">
+    <h2>Liste des affections</h2>
+    <p class="muted">Une affection par ligne, dans l'ordre de la feuille papier. Elle sert au registre, au TACOJO et aux rapports.</p>
+    <textarea id="s-aff" style="width:100%;min-height:260px"></textarea>
+    <div class="row" style="margin-top:8px"><button class="btn" onclick="saveAff()">Enregistrer la liste</button><button class="btn ghost" onclick="resetAff()">Revenir à la liste d'origine</button></div>
+  </div>
+  <div class="card">
+    <h2>Sauvegarde</h2>
+    <p class="muted">Les données sont stockées dans ce navigateur, sur cet ordinateur. Une sauvegarde régulière (clé USB, e-mail) évite de tout perdre si le navigateur est vidé.</p>
+    <div class="row">
+      <button class="btn" onclick="exportBackup()">Télécharger une sauvegarde (.json)</button>
+      <label>Restaurer une sauvegarde<input type="file" accept=".json,application/json" onchange="importBackup(this)"></label>
+      <button class="btn ghost small" onclick="loadDemo()">Charger des données d'exemple</button>
+      <button class="btn danger small" onclick="wipeAll()">Tout effacer</button>
+    </div>
+  </div>
+</section>
+</main>
+
+<div id="pop"></div>
+
+<script>
+/* =========================================================
+   Données de référence (tirées des feuilles du service)
+   ========================================================= */
+const AFF_DEFAUT = [
+ "Abcès","Appendicite","Tumeur","Lithiase vésiculaire","Hernie","Autres",
+ "Plastron appendiculaire","Abcès appendiculaire","Rétablissement continuité",
+ "Fistule anale","Fissure anale","Hémorroïde","Goitre","VCP","Kyste ovaire","Lipome",
+ "Douleur abdominale","Contusion thoracique","Péritonite","Perforation",
+ "Sténose du pylore","Éventration","HLB","Épigastralgies","Occlusion","Plaies",
+ "Rectorragie","Invagination","Suppuration",
+ "Abcès du foie","Constipation chronique","Contusion abdominale","Douleur pelvienne"
+];
+const COLS = {
+  consultation:[
+    {k:"M",l:"M",g:"Sexe"},{k:"F",l:"F",g:"Sexe"},
+    {k:"a1659",l:"16-59 ans",g:"Âge"},{k:"a60",l:"60 ans et plus",g:"Âge"},
+    {k:"nouv",l:"Consultations nouveaux malades"},{k:"anc",l:"Anciens malades"},
+    {k:"tot",l:"Consultation anciens + nouveaux malades",calc:r=>(r.nouv||0)+(r.anc||0)}
+  ],
+  hospitalisation:[
+    {k:"M",l:"M",g:"Sexe"},{k:"F",l:"F",g:"Sexe"},
+    {k:"a1659",l:"16-59 ans",g:"Âge"},{k:"a60",l:"60 ans et plus",g:"Âge"},
+    {k:"nbm",l:"Nbre malades hospit."},{k:"nbj",l:"Nbre journées hospit."},
+    {k:"dM",l:"M",g:"Décès"},{k:"dF",l:"F",g:"Décès"},
+    {k:"tot",l:"TOT décès",calc:r=>(r.dM||0)+(r.dF||0)}
+  ]
+};
+const ISSUES = ["En cours","Exéat (guéri / amélioré)","Transféré","Sortie contre avis médical","Évadé","Décédé"];
+const MOIS = ["JANVIER","FÉVRIER","MARS","AVRIL","MAI","JUIN","JUILLET","AOÛT","SEPTEMBRE","OCTOBRE","NOVEMBRE","DÉCEMBRE"];
+
+/* =========================================================
+   Stockage : localStorage pour les fiches, IndexedDB pour les photos
+   ========================================================= */
+const LS = "cv_thies_v1";
+let DB = load();
+function load(){
+  try{ const d = JSON.parse(localStorage.getItem(LS)); if(d) return Object.assign({patients:[],tacojo:{},aff:AFF_DEFAUT.slice()},d);}catch(e){}
+  return {patients:[],tacojo:{},aff:AFF_DEFAUT.slice()};
+}
+function save(){ localStorage.setItem(LS, JSON.stringify(DB)); }
+
+let idb;
+function idbOpen(){ return new Promise((res,rej)=>{ if(idb) return res(idb);
+  const r = indexedDB.open("cv_thies_photos",1);
+  r.onupgradeneeded=()=>r.result.createObjectStore("p");
+  r.onsuccess=()=>{idb=r.result;res(idb)}; r.onerror=()=>rej(r.error); });}
+async function photoPut(id,data){ const d=await idbOpen(); return new Promise(r=>{const t=d.transaction("p","readwrite");t.objectStore("p").put(data,id);t.oncomplete=r;}); }
+async function photoGet(id){ const d=await idbOpen(); return new Promise(r=>{const q=d.transaction("p").objectStore("p").get(id);q.onsuccess=()=>r(q.result);q.onerror=()=>r(null);}); }
+async function photoDel(id){ const d=await idbOpen(); return new Promise(r=>{const t=d.transaction("p","readwrite");t.objectStore("p").delete(id);t.oncomplete=r;}); }
+async function photoAll(){ const d=await idbOpen(); return new Promise(r=>{const out={};const c=d.transaction("p").objectStore("p").openCursor();c.onsuccess=()=>{const cur=c.result;if(cur){out[cur.key]=cur.value;cur.continue();}else r(out);};}); }
+
+/* =========================================================
+   Utilitaires
+   ========================================================= */
+const $ = id=>document.getElementById(id);
+const esc = s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const today = ()=>new Date().toISOString().slice(0,10);
+const uid = ()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+const fmtD = d=>d?d.split("-").reverse().join("/"):"";
+function toast(m){document.querySelectorAll(".toast").forEach(x=>x.remove());const t=document.createElement("div");t.className="toast";t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),2200);}
+function monthRange(ym){const [y,m]=ym.split("-").map(Number);const last=new Date(y,m,0).getDate();return [ym+"-01",ym+"-"+String(last).padStart(2,"0")];}
+function daysBetween(a,b){return Math.round((new Date(b)-new Date(a))/864e5);}
+function ageCol(age){ if(age===""||age==null||isNaN(age)) return null; age=+age; if(age>=60) return "a60"; if(age>=16) return "a1659"; return "moins16"; }
+function blank(kind){const o={};COLS[kind].forEach(c=>{if(!c.calc)o[c.k]=0});return o;}
+
+/* =========================================================
+   Navigation
+   ========================================================= */
+function go(v){
+  document.querySelectorAll("#nav button").forEach(b=>b.classList.toggle("on",b.dataset.v===v));
+  document.querySelectorAll("section.view").forEach(s=>s.classList.toggle("on",s.id==="v-"+v));
+  ({accueil:renderAccueil,registre:renderRegistre,tacojo:renderTacojo,rapports:renderRapport,programme:renderProgramme,reglages:renderReglages})[v]();
+}
+$("nav").onclick=e=>{if(e.target.dataset.v)go(e.target.dataset.v)};
+function printView(v){document.querySelectorAll("section.view").forEach(s=>s.classList.toggle("printme",s.id==="v-"+v));window.print();}
+
+/* =========================================================
+   ACCUEIL
+   ========================================================= */
+function renderAccueil(){
+  const ym=today().slice(0,7); const [d1,d2]=monthRange(ym);
+  $("acc-mois").textContent=MOIS[+ym.slice(5)-1].toLowerCase()+" "+ym.slice(0,4);
+  const c=aggregate("consultation",d1,d2,"both"), h=aggregate("hospitalisation",d1,d2,"both");
+  const sum=(agg,k)=>Object.values(agg.rows).reduce((s,r)=>s+(r[k]||0),0);
+  const enCours=DB.patients.filter(p=>p.type==="hospitalisation"&&(!p.dateSortie)).length;
+  $("acc-stats").innerHTML=[
+    ["Consultations",sum(c,"nouv")+sum(c,"anc")],["dont nouveaux malades",sum(c,"nouv")],
+    ["Hospitalisations",sum(h,"nbm")],["Journées d'hospitalisation",sum(h,"nbj")],
+    ["Patients hospitalisés en ce moment",enCours],["Décès",sum(h,"dM")+sum(h,"dF")],
+    ["Fiches dans le registre",DB.patients.length]
+  ].map(([l,v])=>`<div class="stat"><b>${v}</b>${l}</div>`).join("");
+}
+
+/* =========================================================
+   REGISTRE
+   ========================================================= */
+function pDate(p){return p.type==="hospitalisation"?p.dateEntree:p.dateConsult;}
+function renderRegistre(){
+  const q=$("r-q").value.trim().toLowerCase(), ty=$("r-type").value, ym=$("r-mois").value;
+  let list=DB.patients.filter(p=>{
+    if(ty&&p.type!==ty) return false;
+    if(ym&&!(pDate(p)||"").startsWith(ym)) return false;
+    if(q){const s=[p.nom,p.prenom,p.vpa,p.affection,p.affectionAutre,p.recuNo,p.codePatient,p.telephone].join(" ").toLowerCase(); if(!s.includes(q)) return false;}
+    return true;
+  }).sort((a,b)=>(pDate(b)||"").localeCompare(pDate(a)||""));
+  $("r-count").textContent=list.length+" fiche(s)";
+  $("r-table").innerHTML=`<thead><tr><th>Date</th><th>Prénom et nom</th><th>N° VPA</th><th class="num">Âge</th><th class="num">Sexe</th><th>Affection</th><th>Type</th><th>Issue / sortie</th><th class="noprint"></th></tr></thead><tbody>`+
+    list.map(p=>`<tr>
+      <td>${fmtD(pDate(p))}</td><td>${esc(p.prenom)} <b>${esc(p.nom)}</b>${p.hasPhoto?' 📷':''}</td><td>${esc(p.vpa)}</td>
+      <td class="num">${esc(p.age)}</td><td class="num">${esc(p.sexe)}</td>
+      <td>${esc(p.affection==="Autres"&&p.affectionAutre?"Autres : "+p.affectionAutre:p.affection)}</td>
+      <td>${p.type==="hospitalisation"?'<span class="pill h">Hospitalisation</span>':(p.statut==="ancien"?'<span class="pill a">Consult. ancien</span>':'<span class="pill n">Consult. nouveau</span>')}</td>
+      <td>${p.type==="hospitalisation"?(p.issue==="Décédé"?'<span class="pill d">Décédé</span> ':esc(p.issue||"En cours"))+(p.dateSortie?" · "+fmtD(p.dateSortie):""):""}</td>
+      <td class="noprint" style="white-space:nowrap"><button class="btn ghost small" onclick="openPatient('${p.id}')">Ouvrir</button>
+      ${p.type==="consultation"?`<button class="btn ghost small" onclick="hospitaliser('${p.id}')">Hospitaliser</button>`:""}</td></tr>`).join("")+
+    (list.length?"":`<tr><td colspan="9" class="muted">Aucun patient pour ces critères.</td></tr>`)+"</tbody>";
+}
+function hospitaliser(id){
+  const p=DB.patients.find(x=>x.id===id); if(!p) return;
+  const copy=Object.assign({},p,{id:uid(),type:"hospitalisation",dateEntree:today(),dateSortie:"",issue:"En cours",hasPhoto:false,createdAt:new Date().toISOString(),lienConsultation:p.id});
+  DB.patients.push(copy); save(); openPatient(copy.id); toast("Fiche d'hospitalisation créée à partir de la consultation");
+}
+
+function affOptions(sel){return DB.aff.map(a=>`<option ${a===sel?"selected":""}>${esc(a)}</option>`).join("")+(sel&&!DB.aff.includes(sel)?`<option selected>${esc(sel)}</option>`:"");}
+
+async function openPatient(id,opt={}){
+  const p=id?DB.patients.find(x=>x.id===id):{type:"consultation",statut:"nouveau",dateConsult:today(),sexe:"",issue:"En cours"};
+  const isNew=!id;
+  $("pop").innerHTML=`<div class="pop"><div class="box" style="width:880px">
+  <h2 style="margin-top:0">${isNew?"Nouveau patient":"Fiche patient"}</h2>
+  <div class="row" style="align-items:flex-start;gap:18px">
+   <div style="flex:2;min-width:300px">
+    <div class="grid">
+      <label>Prénom<input id="f-prenom" value="${esc(p.prenom)}"></label>
+      <label>Nom<input id="f-nom" value="${esc(p.nom)}"></label>
+      <label>N° VPA<input id="f-vpa" value="${esc(p.vpa)}" placeholder="ex. 26/1556"></label>
+      <label>Âge (ans)<input id="f-age" type="number" min="0" max="120" value="${esc(p.age)}"></label>
+      <label>Sexe<select id="f-sexe"><option value="">—</option><option ${p.sexe==="M"?"selected":""} value="M">M</option><option ${p.sexe==="F"?"selected":""} value="F">F</option></select></label>
+      <label>Téléphone<input id="f-tel" value="${esc(p.telephone)}"></label>
+      <label>Adresse<input id="f-adr" value="${esc(p.adresse)}"></label>
+      <label>Affection<select id="f-aff" onchange="$('f-autre-l').classList.toggle('hide',this.value!=='Autres')"><option value="">—</option>${affOptions(p.affection)}</select></label>
+      <label id="f-autre-l" class="${p.affection==="Autres"?"":"hide"}">Préciser<input id="f-autre" value="${esc(p.affectionAutre)}"></label>
+    </div>
+    <h3 style="font-size:14px;margin:14px 0 6px">Venue</h3>
+    <div class="grid">
+      <label>Type<select id="f-type" onchange="ptype()"><option value="consultation" ${p.type==="consultation"?"selected":""}>Consultation</option><option value="hospitalisation" ${p.type==="hospitalisation"?"selected":""}>Hospitalisation</option></select></label>
+      <label class="fc">Malade<select id="f-statut"><option value="nouveau" ${p.statut!=="ancien"?"selected":""}>Nouveau malade</option><option value="ancien" ${p.statut==="ancien"?"selected":""}>Ancien malade</option></select></label>
+      <label class="fc">Date de consultation<input type="date" id="f-dc" value="${esc(p.dateConsult)}"></label>
+      <label class="fh">Date d'entrée<input type="date" id="f-de" value="${esc(p.dateEntree)}"></label>
+      <label class="fh">Date de sortie<input type="date" id="f-ds" value="${esc(p.dateSortie)}"></label>
+      <label class="fh">Issue<select id="f-issue">${ISSUES.map(i=>`<option ${i===(p.issue||"En cours")?"selected":""}>${i}</option>`).join("")}</select></label>
+      <label class="fh">Lit / chambre<input id="f-lit" value="${esc(p.lit)}"></label>
+    </div>
+    <h3 style="font-size:14px;margin:14px 0 6px">Bloc opératoire (facultatif)</h3>
+    <div class="grid">
+      <label>Diagnostic<input id="f-diag" value="${esc(p.diagnostic)}"></label>
+      <label>Indication / intervention<input id="f-ind" value="${esc(p.indication)}"></label>
+      <label>Date d'intervention<input type="date" id="f-di" value="${esc(p.dateIntervention)}"></label>
+    </div>
+    <h3 style="font-size:14px;margin:14px 0 6px">Reçu de paiement</h3>
+    <div class="grid">
+      <label>N° de reçu<input id="f-recu" value="${esc(p.recuNo)}"></label>
+      <label>Code patient<input id="f-code" value="${esc(p.codePatient)}" placeholder="ex. 15/10/2026SG411"></label>
+      <label>Montant (FCFA)<input id="f-mont" type="number" value="${esc(p.montant)}"></label>
+      <label>Date du reçu<input type="date" id="f-dr" value="${esc(p.dateRecu)}"></label>
+    </div>
+    <label style="margin-top:10px">Notes<textarea id="f-notes">${esc(p.notes)}</textarea></label>
+    <div id="f-warn"></div>
+   </div>
+   <div style="flex:1;min-width:240px">
+    <div class="card" style="margin:0">
+      <b>Photo du reçu</b>
+      <p class="muted">Prenez le reçu en photo (téléphone) ou choisissez une image. La photo est gardée avec la fiche.</p>
+      <input type="file" accept="image/*" capture="environment" id="f-photo" onchange="photoChosen(this)">
+      <div id="f-photo-prev" style="margin-top:8px"></div>
+      <button class="btn ghost small hide" id="f-ocr" style="margin-top:8px" onclick="runOCR()">Lire le reçu et remplir la fiche</button>
+      <div id="f-ocr-out" class="muted" style="margin-top:6px"></div>
+    </div>
+   </div>
+  </div>
+  <div class="row" style="margin-top:14px;justify-content:space-between">
+    <div>${isNew?"":`<button class="btn danger small" onclick="delPatient('${p.id}')">Supprimer la fiche</button>`}</div>
+    <div class="row"><button class="btn ghost" onclick="closePop()">Annuler</button><button class="btn" onclick="savePatient(${isNew?"null":`'${p.id}'`})">Enregistrer</button></div>
+  </div></div></div>`;
+  window._photo=null; window._photoOrig=null;
+  ptype();
+  if(p.hasPhoto){const ph=await photoGet(p.id); if(ph){window._photo=ph;showPhoto(ph);}}
+  if(opt.photo) setTimeout(()=>$("f-photo").click(),50);
+}
+function ptype(){const h=$("f-type").value==="hospitalisation";document.querySelectorAll(".fc").forEach(e=>e.classList.toggle("hide",h));document.querySelectorAll(".fh").forEach(e=>e.classList.toggle("hide",!h));}
+function closePop(){$("pop").innerHTML="";}
+function photoChosen(inp){
+  const f=inp.files[0]; if(!f) return;
+  window._photoOrig=f; // photo en pleine résolution, pour la lecture du reçu
+  const img=new Image(); const url=URL.createObjectURL(f);
+  img.onload=()=>{ const max=1600, s=Math.min(1,max/Math.max(img.width,img.height));
+    const c=document.createElement("canvas"); c.width=img.width*s; c.height=img.height*s;
+    c.getContext("2d").drawImage(img,0,0,c.width,c.height);
+    window._photo=c.toDataURL("image/jpeg",.82); URL.revokeObjectURL(url); showPhoto(window._photo);
+    if(!$("f-nom").value&&!$("f-prenom").value) runOCR(); };
+  img.src=url;
+}
+function showPhoto(d){$("f-photo-prev").innerHTML=`<a href="${d}" target="_blank"><img class="photo-prev" src="${d}"></a>`;$("f-ocr").classList.remove("hide");}
+
+/* Lecture automatique (OCR) : nécessite Internet la première fois (Tesseract.js) */
+function loadTesseract(){return new Promise((res,rej)=>{if(window.Tesseract)return res();const s=document.createElement("script");s.src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js";s.onload=res;s.onerror=()=>rej(new Error("Pas de connexion Internet"));document.head.appendChild(s);});}
+/* Lecture des reçus CHRT : voir le module ci-dessous (recu-chrt.js) */
+/* =====================================================================
+   Lecture des reçus de paiement du CHR de Thiès (modèle informatisé
+   "CHRT : THIES – REÇU DE PAIEMENT N°").
+   - lireRecu(image, {onProgress, tesseract}) : photo -> champs du registre
+   - analyserTexteRecu(texte) : texte OCR -> champs (fonction pure, testable)
+   Tout se fait dans le navigateur (Tesseract.js) : la photo ne quitte pas
+   l'ordinateur ou le téléphone. Internet n'est nécessaire que la première
+   fois, pour télécharger le moteur de lecture et le dictionnaire français.
+   ===================================================================== */
+(function (global) {
+  "use strict";
+
+  /* ---------- Réglages propres au service (à compléter) ---------- */
+  const RECU_CONFIG = {
+    // Mots qui identifient le service sur la ligne de prestation ("SERVICE / ACTE  PRIX")
+    servicesChirurgie: ["CHIRURGIE", "CHIR", "VISCERAL", "VISCERALE"],
+    // Mots qui classent la prestation
+    motsConsultation: ["CONSULT", "CS ", "VISITE"],
+    motsHospitalisation: ["HOSPIT", "JOURNEE", "JOURNÉE", "CHAMBRE", "CATEGORIE", "CATÉGORIE", "LIT"],
+    // Prix d'une journée d'hospitalisation par catégorie (FCFA) : à remplir avec le service.
+    // Sert à calculer le nombre de journées quand le reçu ne l'écrit pas.
+    tarifJourneeParCategorie: { /* "1": 0, "2": 0, "3": 0 */ }
+  };
+
+  /* ---------- Outils ---------- */
+  const sansAccent = s => s.normalize("NFD").replace(/[̀-ͯ]/g, "");
+  const norm = s => sansAccent(String(s || "")).toUpperCase();
+  const isoDate = (j, m, a) => {
+    j = +j; m = +m; a = +a;
+    if (!(j >= 1 && j <= 31 && m >= 1 && m <= 12 && a >= 2000 && a <= 2100)) return null;
+    return a + "-" + String(m).padStart(2, "0") + "-" + String(j).padStart(2, "0");
+  };
+  // Corrige les confusions OCR courantes dans une zone qui ne doit contenir que des chiffres
+  const chiffres = s => String(s).replace(/[Oo]/g, "0").replace(/[Il|]/g, "1").replace(/[Ss]/g, "5").replace(/B/g, "8").replace(/Z/g, "2");
+  function vote(vals) {
+    const c = {};
+    vals.filter(Boolean).forEach(v => (c[v] = (c[v] || 0) + 1));
+    const e = Object.entries(c).sort((a, b) => b[1] - a[1]);
+    if (!e.length) return { v: "", n: 0, desaccord: false };
+    return { v: e[0][0], n: e[0][1], desaccord: e.length > 1 };
+  }
+
+  /* Montant écrit en toutes lettres ("cinq mille francs cfa") -> 5000 */
+  const UNITES = { zero: 0, un: 1, une: 1, deux: 2, trois: 3, quatre: 4, cinq: 5, six: 6, sept: 7, huit: 8, neuf: 9, dix: 10, onze: 11, douze: 12, treize: 13, quatorze: 14, quinze: 15, seize: 16, vingt: 20, vingts: 20, trente: 30, quarante: 40, cinquante: 50, soixante: 60, septante: 70, huitante: 80, nonante: 90 };
+  function lettresEnNombre(txt) {
+    const mots = sansAccent(txt.toLowerCase()).replace(/[-,]/g, " ").replace(/\bet\b/g, " ").split(/\s+/).filter(Boolean);
+    let total = 0, courant = 0, vu = false;
+    for (let m of mots) {
+      if (m === "cing") m = "cinq"; // confusion OCR fréquente
+      if (m in UNITES) { courant += UNITES[m]; vu = true; }
+      else if (m === "cent" || m === "cents") { courant = (courant || 1) * 100; vu = true; }
+      else if (m === "mille") { total += (courant || 1) * 1000; courant = 0; vu = true; }
+      else if (m === "million" || m === "millions") { total += (courant || 1) * 1e6; courant = 0; vu = true; }
+      else if (vu) break;
+    }
+    // "quatre vingt" -> 4*20
+    return vu ? total + courant : null;
+  }
+  function lettresEnNombreFr(txt) {
+    const t = sansAccent(txt.toLowerCase()).replace(/quatre[\s-]+vingts?/g, "huitante").replace(/soixante[\s-]+dix/g, "septante").replace(/quatre[\s-]+huitante/g, "huitante");
+    return lettresEnNombre(t);
+  }
+
+  /* ---------- Analyse du texte lu ---------- */
+  function analyserTexteRecu(texte) {
+    const T = String(texte || "").replace(/\r/g, "");
+    const lignes = T.split("\n").map(l => l.trim()).filter(Boolean);
+    const N = norm(T);
+    const r = { champs: {}, doutes: [], alertes: [] };
+    const set = (k, v, sur) => { if (v !== "" && v != null) { r.champs[k] = v; if (!sur) r.doutes.push(k); } };
+
+    // Reconnaître le modèle
+    const marqueurs = ["CHRT", "PAIEMENT", "CODE PATIENT", "PRENOM", "TOTAL PAYE", "AGENT FACTURATION", "AINSI ETABLIE"].filter(m => N.includes(m)).length;
+    r.modeleReconnu = marqueurs >= 2;
+    if (!r.modeleReconnu) r.alertes.push("Ce document ne ressemble pas au reçu du CHR de Thiès : vérifiez tous les champs.");
+
+    // N° de reçu : "PAIEMENT N° 06/11/20261863353" (date + numéro d'ordre)
+    let mRecu = /PAIEMENT\s*N\W{0,4}\s*([0-9OIlSB]{2}\s*\/\s*[0-9OIlSB]{2}\s*\/\s*[0-9OIlSB]{4}\s*[0-9OIlSB]{3,})/i.exec(sansAccent(T))
+             || /\b(\d{2}\/\d{2}\/\d{4}\d{4,})\b/.exec(T);
+    let dateDuNo = null;
+    if (mRecu) {
+      const no = chiffres(mRecu[1]).replace(/\s/g, "");
+      set("recuNo", no, /PAIEMENT/i.test(mRecu[0]));
+      const d = /^(\d{2})\/(\d{2})\/(\d{4})/.exec(no); if (d) dateDuNo = isoDate(d[1], d[2], d[3]);
+    }
+
+    // Code patient : "15/10/2026SG411" (date d'ouverture du dossier + initiales + numéro)
+    const mCode = /CODE\s*PATIENT\s*:?\s*([0-9OIl]{2}\/[0-9OIl]{2}\/[0-9OIlS]{4}\s?[A-Z]{1,4}\s?\d{1,6})/i.exec(sansAccent(T))
+               || /\b(\d{2}\/\d{2}\/\d{4}[A-Z]{1,4}\d{1,6})\b/.exec(T);
+    let dateDossier = null;
+    if (mCode) {
+      const c = mCode[1].replace(/\s/g, "");
+      const d = /^(.{2})\/(.{2})\/(.{4})(.*)$/.exec(c);
+      const code = d ? chiffres(d[1]) + "/" + chiffres(d[2]) + "/" + chiffres(d[3]) + d[4] : c;
+      set("codePatient", code, /CODE/i.test(mCode[0]));
+      const dd = /^(\d{2})\/(\d{2})\/(\d{4})/.exec(code); if (dd) dateDossier = isoDate(dd[1], dd[2], dd[3]);
+    }
+
+    // Date et heure : "Thiès le 06/11/2026 08:43", "en date du 06/11/2026", préfixe du n° de reçu
+    const mLe = /THI\w*S?\s*LE\s*([0-9OIl]{2})\s*\/\s*([0-9OIl]{2})\s*\/\s*([0-9OIl]{4})\s*([0-9OIl]{2})\s*:?\s*([0-9OIl]{2})?/i.exec(sansAccent(T));
+    const mDu = /EN\s*DATE\s*DU\s*([0-9OIl]{2})\s*\/\s*([0-9OIl]{2})\s*\/\s*([0-9OIl]{4})/i.exec(sansAccent(T));
+    const dLe = mLe ? isoDate(chiffres(mLe[1]), chiffres(mLe[2]), chiffres(mLe[3])) : null;
+    const dDu = mDu ? isoDate(chiffres(mDu[1]), chiffres(mDu[2]), chiffres(mDu[3])) : null;
+    const vd = vote([dLe, dDu, dateDuNo]);
+    if (vd.v) set("dateRecu", vd.v, vd.n >= 2 && !vd.desaccord);
+    if (mLe && mLe[5]) set("heureRecu", chiffres(mLe[4]) + ":" + chiffres(mLe[5]), false);
+
+    // Nouveau / ancien malade : dossier ouvert le jour du reçu = nouveau malade
+    if (dateDossier) {
+      r.champs.dateOuvertureDossier = dateDossier;
+      if (r.champs.dateRecu) set("statut", dateDossier === r.champs.dateRecu ? "nouveau" : "ancien", false);
+    }
+
+    // Identité
+    const val = (re) => { const m = re.exec(T); return m ? m[1].replace(/\s+/g, " ").trim() : ""; };
+    const prenom = val(/Pr[ée]n[o0]m[ \t]*[:;.]?[ \t]*([A-ZÀ-Ÿ][A-ZÀ-Ÿ' \-]+?)\s*(?:\||$|RADIO|CHIR|CONSULT|HOSPIT|\n)/m);
+    if (prenom) set("prenom", prenom.replace(/[^A-ZÀ-Ÿ' \-]/g, "").trim(), true);
+    const nom = val(/(?:^|[^É\wé])N[o0]m[ \t]*[:;.]?[ \t]*([A-ZÀ-Ÿ][A-ZÀ-Ÿ' \-]+?)\s*(?:\||$|\n)/m);
+    if (nom) set("nom", nom.replace(/[^A-ZÀ-Ÿ' \-]/g, "").trim(), true);
+
+    // Âge (ans ou mois) et sexe : "Age : 10 ans Sexe: M"
+    const mAge = /A[gq]e\s*[:;.]?\s*(\d{1,3})\s*(ans?|mois|jours?)/i.exec(T) || /(\d{1,3})\s*(ans?)\s*Sexe/i.exec(T);
+    if (mAge) {
+      const u = mAge[2].toLowerCase();
+      const n = +mAge[1];
+      if (!u.startsWith("an")) set("age", "0", true);
+      else if (n <= 120) set("age", String(n), true);
+      else set("age", String(n).slice(-2), false);
+      if (!u.startsWith("an")) r.champs.ageDetail = mAge[1] + " " + u;
+    }
+    const mSexe = /Sexe\s*[:;.]?\s*([MF])\b/i.exec(T);
+    if (mSexe) set("sexe", mSexe[1].toUpperCase(), true);
+
+    // Téléphone : 9 chiffres sénégalais (7x xxx xx xx ou 33 xxx xx xx), hors numéro de l'hôpital
+    const tels = (T.match(/\b(?:\+?221[\s.]?)?((?:7[05678]|3[03])[\s.]?\d{3}[\s.]?\d{2}[\s.]?\d{2})\b/g) || [])
+      .map(t => t.replace(/\D/g, "").replace(/^221/, ""))
+      .filter(t => t !== "339397480");
+    if (tels.length) set("telephone", tels[0], /T[ée]l[ée]phone/i.test(T));
+
+    // Adresse : après "Adresse :" ; sinon ligne isolée en majuscules juste après la ligne de l'âge
+    const motsMaj = s => (/^([A-ZÀ-Ÿ0-9][A-ZÀ-Ÿ0-9'\-\/]*(?:[ ]+[A-ZÀ-Ÿ0-9][A-ZÀ-Ÿ0-9'\-\/]*)*)/.exec(s) || ["", ""])[1]
+      .replace(/\s*\bTOTAL\b.*$/, "").replace(/(\s+\S{1,2})+$/, "").trim();
+    const adrs = [];
+    T.replace(/Adresse[ \t]*[:;.]?[ \t]*([^\n]+)/gi, (_, s) => { const a = motsMaj(s); if (a.length >= 3) adrs.push(a); });
+    const iAge = lignes.findIndex(l => /\bans\b.*Sexe/i.test(l));
+    if (iAge >= 0 && lignes[iAge + 1]) { const a = motsMaj(lignes[iAge + 1].replace(/^[^A-ZÀ-Ÿ]+/, "")); if (a.length >= 3 && !/^(TOTAL|NOM|PRENOM)/.test(norm(a))) adrs.push(a); }
+    const va = vote(adrs);
+    if (va.v) set("adresse", va.v, va.n >= 2 && !va.desaccord);
+
+    const mat = val(/Matricule[ \t]*[:;.]?[ \t]*([A-Z0-9][A-Z0-9\/\-]{2,})/i);
+    if (mat) set("matricule", mat, false);
+
+    // Prestations : "SERVICE / ACTE  PRIX F"
+    const prest = [];
+    const reP = /([A-ZÀ-Ÿ][A-ZÀ-Ÿ .'\-]{2,})\s*\/\s*([A-ZÀ-Ÿ0-9][A-ZÀ-Ÿ0-9 .'()\-\/]*?)\s*(?:[xX×]\s*(\d{1,3})\s*)?[|:]?\s*([0-9OIlS .]{3,})\s*F(?:CFA)?\b/g;
+    let m;
+    while ((m = reP.exec(T))) {
+      const prix = +chiffres(m[4]).replace(/\D/g, "");
+      if (!prix) continue;
+      let service = m[1].trim(); const acte = m[2].trim();
+      [r.champs.nom, r.champs.prenom].filter(Boolean).forEach(x => { service = service.replace(new RegExp("^.*\\b" + x.split(" ").pop() + "\\b\\s*"), ""); });
+      service = service.replace(/^(NOM|PRENOM)\s*/, "").trim();
+      if (service.length < 3) continue;
+      if (/CHRT|THIES/i.test(service)) continue;
+      prest.push({ service, acte, quantite: m[3] ? +m[3] : null, prix });
+    }
+    if (prest.length) {
+      r.champs.prestations = prest;
+      r.champs.service = prest[0].service;
+      r.champs.prestation = prest.map(p => p.service + " / " + p.acte + (p.quantite ? " x" + p.quantite : "") + " " + p.prix + " F").join(" ; ");
+      const S = norm(prest.map(p => p.service).join(" "));
+      if (!RECU_CONFIG.servicesChirurgie.some(w => S.includes(w)))
+        r.alertes.push("Ce reçu concerne le service « " + prest[0].service + " », pas la chirurgie : à vérifier avant de l'enregistrer.");
+      const A = norm(prest.map(p => p.acte + " " + p.service).join(" "));
+      if (RECU_CONFIG.motsHospitalisation.some(w => A.includes(w))) {
+        set("type", "hospitalisation", false);
+        const mCat = /\b(\d)\s*(?:E|EME|IEME|ERE)?\s*CAT/.exec(A) || /CAT\w*\s*[:.]?\s*(\d|[IVX]{1,3}|[A-C])\b/.exec(A);
+        if (mCat) r.champs.categorie = mCat[1];
+        const pJ = prest.find(p => p.quantite);
+        const mJ = /(\d{1,3})\s*(?:J\b|JOURS?|JOURNEES?|NUITS?)/.exec(A);
+        const tarif = r.champs.categorie && RECU_CONFIG.tarifJourneeParCategorie[r.champs.categorie];
+        if (pJ) set("journees", String(pJ.quantite), false);
+        else if (mJ) set("journees", mJ[1], false);
+        else if (tarif) set("journees", String(Math.round(prest.reduce((s, p) => s + p.prix, 0) / tarif)), false);
+      } else if (RECU_CONFIG.motsConsultation.some(w => A.includes(w))) set("type", "consultation", true);
+    }
+
+    // Totaux
+    const tot = re => { const x = re.exec(sansAccent(T)); return x ? +chiffres(x[1]).replace(/\D/g, "") : null; };
+    const total = tot(/TOTAL\s*(?![A-Z])[^=\n]*=\s*([0-9OIlS .]+)\s*F/i);
+    const totalEmp = tot(/TOTAL\s*EMP\w*\s*=?\s*([0-9OIlS .]+)\s*F/i);
+    const totalPaye = tot(/TOTAL\s*[PF]AY\w*\s*[^=\n]*=\s*([0-9OIlS .]+)\s*F/i);
+    const mLettres = /fr?a?n?c?s?\s*cfa/i.test(T) ? /date\s*du\s*\S+\s*[àa]\s*([a-zàâçéèêëîïôûù \-]+?)\s*francs/i.exec(T) : null;
+    const enLettres = mLettres ? lettresEnNombreFr(mLettres[1]) : null;
+    const sommePrest = prest.length ? prest.reduce((s, p) => s + p.prix, 0) : null;
+    const vt = vote([total, enLettres, sommePrest].map(x => (x ? String(x) : "")));
+    if (vt.v) set("montant", vt.v, vt.n >= 2 && !vt.desaccord);
+    if (totalEmp != null) r.champs.totalEmployeur = String(totalEmp);
+    const vp = vote([totalPaye, (total != null && totalEmp != null) ? total - totalEmp : null, (enLettres != null && totalEmp != null) ? enLettres - totalEmp : null].map(x => (x || x === 0 ? String(x) : "")));
+    if (vp.v) set("totalPaye", vp.v, vp.n >= 2 && !vp.desaccord);
+    if (enLettres) r.champs.montantEnLettres = enLettres;
+
+    const agentF = val(/Agent\s*Facturation[ \t]*[:;.]?[ \t]*([A-ZÀ-Ÿ][A-ZÀ-Ÿ ]+)/);
+    if (agentF) r.champs.agentFacturation = agentF;
+
+    return r;
+  }
+
+  /* Deux lectures indépendantes : un champ lu pareil dans les deux est sûr,
+     un champ qui diffère ou qui n'est lu qu'une fois est marqué « à vérifier ». */
+  function fusionner(t1, t2) {
+    const a = analyserTexteRecu(t1), b = analyserTexteRecu(t2), ab = analyserTexteRecu(t1 + "\n" + t2);
+    const res = ab;
+    const doutes = new Set(ab.doutes);
+    Object.keys(ab.champs).forEach(k => {
+      if (typeof ab.champs[k] === "object") return;
+      const va = a.champs[k], vb = b.champs[k];
+      if (va != null && vb != null && String(va) === String(vb)) { doutes.delete(k); res.champs[k] = va; }
+      else if (va != null && vb != null) doutes.add(k);
+    });
+    res.doutes = [...doutes];
+    res.texte = t1 + "\n----------\n" + t2;
+    return res;
+  }
+
+  /* ---------- Préparation de la photo ---------- */
+  function chargerImage(src) {
+    return new Promise((res, rej) => {
+      if (src instanceof HTMLImageElement || src instanceof HTMLCanvasElement) return res(src);
+      const img = new Image();
+      img.onload = () => res(img); img.onerror = () => rej(new Error("Image illisible"));
+      img.src = typeof src === "string" ? src : URL.createObjectURL(src);
+    });
+  }
+  /* Redressement : cherche le petit angle (±8°) qui aligne le mieux les lignes de texte
+     (méthode du profil de projection, sans lecture OCR, très rapide). */
+  function inclinaison(img, angle) {
+    const c = preparer(img, angle, 700, 0);
+    const g = c.getContext("2d"), d = g.getImageData(0, 0, c.width, c.height).data;
+    const pts = [];
+    // Ne garder que les bords des traits (pixel sombre à côté d'un pixel clair) : ignore les grandes zones sombres
+    const W = c.width, px = (x, y) => d[(y * W + x) * 4];
+    for (let y = 1; y < c.height - 1; y++) for (let x = 1; x < W - 1; x++) {
+      const v = px(x, y);
+      if (v < 110 && (px(x, y - 1) > 170 || px(x, y + 1) > 170)) pts.push(x, y);
+    }
+    if (pts.length < 200) return 0;
+    let best = 0, bestV = -1;
+    for (let a = -8; a <= 8; a += 0.5) {
+      const r = a * Math.PI / 180, sn = Math.sin(r), cs = Math.cos(r);
+      const rows = new Float64Array(c.height * 2 + 10);
+      for (let i = 0; i < pts.length; i += 2) {
+        const y = Math.round(-pts[i] * sn + pts[i + 1] * cs + c.height * 0.5);
+        if (y >= 0 && y < rows.length) rows[y]++;
+      }
+      let m = 0; for (const v of rows) m += v; m /= rows.length;
+      let vr = 0; for (const v of rows) vr += (v - m) * (v - m);
+      if (vr > bestV) { bestV = vr; best = a; }
+    }
+    return best;
+  }
+
+  /* Recadrage sur le papier : le reçu est plus clair que la table autour.
+     Le fond (table, bords) perturbe beaucoup la lecture, d'où ce recadrage. */
+  function cadrePapier(img, angle, fin) {
+    const c = preparer(img, angle, 600, fin);
+    const W = c.width, H = c.height, d = c.getContext("2d").getImageData(0, 0, W, H).data;
+    const vals = []; for (let i = 0; i < d.length; i += 16) vals.push(d[i]);
+    vals.sort((a, b) => a - b);
+    const seuil = vals[Math.floor(vals.length * 0.2)];
+    const clair = (x, y) => d[(y * W + x) * 4] > seuil;
+    const lig = [], col = new Array(W).fill(0);
+    for (let y = 0; y < H; y++) { let n = 0; for (let x = 0; x < W; x++) if (clair(x, y)) { n++; col[x]++; } lig.push(n / W); }
+    const bornes = (prof, tot) => {
+      const ok = prof.map(v => v / tot > 0.5);
+      let best = [0, prof.length - 1], deb = -1, len = 0;
+      ok.forEach((b, i) => { if (b) { if (deb < 0) deb = i; if (i - deb + 1 > len) { len = i - deb + 1; best = [deb, i]; } } else deb = -1; });
+      return len > prof.length * 0.3 ? best : [0, prof.length - 1];
+    };
+    const [y0, y1] = bornes(lig, 1), [x0, x1] = bornes(col, H);
+    const m = 0.02;
+    return { x: Math.max(0, x0 / W - m), y: Math.max(0, y0 / H - m), w: Math.min(1, (x1 - x0) / W + 2 * m), h: Math.min(1, (y1 - y0) / H + 2 * m) };
+  }
+  function recadrer(c, f) {
+    const o = document.createElement("canvas");
+    o.width = Math.round(c.width * f.w); o.height = Math.round(c.height * f.h);
+    o.getContext("2d").drawImage(c, -Math.round(c.width * f.x), -Math.round(c.height * f.y));
+    return o;
+  }
+
+  // Rotation + canal rouge (l'encre bleue ressort sur le papier rose) + étirement du contraste
+  function preparer(img, angle, largeur, fin) {
+    fin = fin || 0;
+    const w0 = img.naturalWidth || img.width, h0 = img.naturalHeight || img.height;
+    const tourne = angle % 180 !== 0;
+    const W = tourne ? h0 : w0, H = tourne ? w0 : h0;
+    const s = largeur / W;
+    const c = document.createElement("canvas");
+    c.width = Math.round(W * s); c.height = Math.round(H * s);
+    const g = c.getContext("2d");
+    g.fillStyle = "#fff"; g.fillRect(0, 0, c.width, c.height);
+    g.translate(c.width / 2, c.height / 2); g.rotate((angle + fin) * Math.PI / 180);
+    g.drawImage(img, -w0 * s / 2, -h0 * s / 2, w0 * s, h0 * s);
+    const d = g.getImageData(0, 0, c.width, c.height), p = d.data;
+    const hist = new Uint32Array(256);
+    for (let i = 0; i < p.length; i += 4) hist[p[i]]++;
+    const n = p.length / 4; let acc = 0, lo = 0, hi = 255;
+    for (let v = 0; v < 256; v++) { acc += hist[v]; if (acc < n * 0.01) lo = v; if (acc < n * 0.99) hi = v; }
+    const k = 255 / Math.max(1, hi - lo);
+    for (let i = 0; i < p.length; i += 4) { const v = Math.max(0, Math.min(255, (p[i] - lo) * k)); p[i] = p[i + 1] = p[i + 2] = v; }
+    g.putImageData(d, 0, 0);
+    return c;
+  }
+  const scoreTexte = t => ["CHRT", "THIES", "PAIEMENT", "CODE PATIENT", "PRENOM", "NOM", "SEXE", "TOTAL", "AGENT", "FACTURE"].filter(m => norm(t).includes(m)).length;
+
+  /* ---------- Lecture complète ---------- */
+  async function lireRecu(src, opt = {}) {
+    const Tess = opt.tesseract || global.Tesseract;
+    if (!Tess) throw new Error("Moteur de lecture non chargé");
+    const etape = opt.onProgress || (() => {});
+    const img = await chargerImage(src);
+    const w = await Tess.createWorker("fra", 1, opt.workerOptions || {});
+    try {
+      // 1. Sens de la photo : le reçu est en paysage. Photo en portrait -> essayer les deux quarts de tour.
+      const portrait = (img.naturalHeight || img.height) > (img.naturalWidth || img.width);
+      const angles = opt.angle != null ? [opt.angle] : (portrait ? [270, 90] : [0, 180]);
+      let angle = angles[0];
+      if (angles.length > 1) {
+        etape("Recherche du sens de la photo…");
+        await w.setParameters({ tessedit_pageseg_mode: "6" });
+        let best = -1;
+        for (const a of angles) {
+          const t = (await w.recognize(preparer(img, a, 1400))).data.text;
+          const sc = scoreTexte(t);
+          if (sc > best) { best = sc; angle = a; }
+          if (sc >= 4) break;
+        }
+      }
+      // 2. Deux lectures complémentaires (mise en page automatique + bloc unique), puis fusion
+      const fin = inclinaison(img, angle);
+      const base = preparer(img, angle, 2400, -fin);
+      const lire = async (c, n) => {
+        etape("Lecture du reçu (" + n + ")…");
+        await w.setParameters({ tessedit_pageseg_mode: "3" });
+        const t1 = (await w.recognize(c)).data.text;
+        await w.setParameters({ tessedit_pageseg_mode: "6" });
+        const t2 = (await w.recognize(c)).data.text;
+        return fusionner(t1, t2);
+      };
+      const qualite = r => ["recuNo", "codePatient", "prenom", "nom", "age", "sexe", "montant", "dateRecu"].filter(k => r.champs[k]).length;
+      let res = await lire(base, "1/2");
+      // 3. Lecture faible : la table ou les bords autour du reçu gênent -> recadrer et relire
+      if (qualite(res) < 6) {
+        const cadres = [cadrePapier(img, angle, -fin), { x: 0.04, y: 0.12, w: 0.92, h: 0.76 }];
+        for (const f of cadres) {
+          if (f.w * f.h > 0.97 || f.w < 0.5 || f.h < 0.4) continue;
+          const r2 = await lire(recadrer(preparer(img, angle, Math.round(2400 / f.w), -fin), f), "2/2");
+          const [hi, lo] = qualite(r2) > qualite(res) ? [r2, res] : [res, r2];
+          if (hi === r2) hi.cadre = f;
+          // compléter les champs manquants avec l'autre lecture (marqués à vérifier)
+          Object.keys(lo.champs).forEach(k => { if (hi.champs[k] == null) { hi.champs[k] = lo.champs[k]; if (!hi.doutes.includes(k)) hi.doutes.push(k); } });
+          hi.texte += "\n==========\n" + lo.texte;
+          res = hi;
+          if (qualite(res) >= 6) break;
+        }
+      }
+      res.angle = angle; res.redressement = -fin;
+      const larg = Math.min(img.naturalWidth || img.width, img.naturalHeight || img.height);
+      if (larg < 900) res.alertes.push("Photo de petite taille : la lecture est moins fiable. Envoyez la photo d'origine plutôt qu'une image compressée.");
+      return res;
+    } finally { await w.terminate(); }
+  }
+
+  global.RECU_CONFIG = RECU_CONFIG;
+  global.analyserTexteRecu = analyserTexteRecu;
+  global.lireRecu = lireRecu;
+  global.lettresEnNombreFr = lettresEnNombreFr;
+})(typeof window !== "undefined" ? window : globalThis);
+
+async function runOCR(){
+  const out=$("f-ocr-out"); out.innerHTML="Chargement du moteur de lecture…";
+  document.querySelectorAll("#pop .doute").forEach(e=>e.classList.remove("doute"));
+  try{
+    await loadTesseract();
+    const r=await lireRecu(window._photoOrig||window._photo,{onProgress:m=>out.textContent=m});
+    const c=r.champs, doutes=new Set(r.doutes), remplis=[];
+    const put=(id,val,k,lib)=>{const el=$(id); if(!el||val==null||val==="") return; if(el.value&&el.value!==String(val)) return; el.value=val; remplis.push(lib); if(doutes.has(k)) el.classList.add("doute");};
+    put("f-prenom",c.prenom,"prenom","prénom"); put("f-nom",c.nom,"nom","nom");
+    put("f-age",c.age,"age","âge"); put("f-sexe",c.sexe,"sexe","sexe");
+    put("f-tel",c.telephone,"telephone","téléphone"); put("f-adr",c.adresse,"adresse","adresse");
+    put("f-recu",c.recuNo,"recuNo","n° de reçu"); put("f-code",c.codePatient,"codePatient","code patient");
+    put("f-mont",c.totalPaye||c.montant,"montant","montant"); put("f-dr",c.dateRecu,"dateRecu","date du reçu");
+    if(c.type){ $("f-type").value=c.type; ptype(); if(doutes.has("type")) $("f-type").classList.add("doute"); remplis.push("type"); }
+    if(c.dateRecu){ // la date du reçu remplace la date du jour proposée par défaut
+      const id=$("f-type").value==="hospitalisation"?"f-de":"f-dc", el=$(id);
+      if(!el.value||el.value===today()){ el.value=c.dateRecu; if(doutes.has("dateRecu")) el.classList.add("doute"); } }
+    // Ancien malade : code patient déjà connu dans le registre, sinon date d'ouverture du dossier
+    const connu=c.codePatient&&DB.patients.find(x=>x.codePatient===c.codePatient);
+    let statutMsg="";
+    if(connu){ $("f-statut").value="ancien"; statutMsg=`Ce code patient existe déjà dans le registre (${esc(connu.prenom)} ${esc(connu.nom)}) : ancien malade.`;
+      if(!$("f-vpa").value&&connu.vpa) $("f-vpa").value=connu.vpa;
+      if(!$("f-aff").value&&connu.affection){ $("f-aff").value=connu.affection; $("f-aff").classList.add("doute"); } }
+    else if(c.statut){ $("f-statut").value=c.statut; $("f-statut").classList.add("doute");
+      statutMsg=`Dossier ouvert le ${c.dateOuvertureDossier.split("-").reverse().join("/")} : proposé comme ${c.statut} malade.`; }
+    const extra=[c.prestation&&("Prestation : "+c.prestation), c.categorie&&("Catégorie "+c.categorie), c.journees&&(c.journees+" journée(s) payée(s)")].filter(Boolean).join(" · ");
+    if(extra&&!$("f-notes").value.includes(extra)) $("f-notes").value=($("f-notes").value?$("f-notes").value+"\n":"")+"Reçu : "+extra;
+    out.innerHTML=r.alertes.map(a=>`<div class="hint">${esc(a)}</div>`).join("")+
+      (remplis.length?`<div class="ok">Champs remplis : ${remplis.join(", ")}. Les cases en jaune sont à vérifier.</div>`:`<div class="hint">Aucun champ reconnu. Saisissez les champs en regardant la photo.</div>`)+
+      (statutMsg?`<div class="muted" style="margin-top:4px">${statutMsg}</div>`:"")+
+      `<div class="muted" style="margin-top:4px">L'affection n'est pas sur le reçu : choisissez-la.</div>`+
+      `<details><summary>Texte lu</summary><pre style="white-space:pre-wrap;font-size:12px">${esc(r.texte)}</pre></details>`;
+  }catch(e){out.innerHTML=`<div class="hint">Lecture impossible (${esc(e.message)}). Saisissez les champs à la main en regardant la photo.</div>`;}
+}
+
+async function savePatient(id){
+  const v=k=>$(k).value.trim();
+  const p={
+    prenom:v("f-prenom"),nom:v("f-nom").toUpperCase(),vpa:v("f-vpa"),age:v("f-age"),sexe:v("f-sexe"),telephone:v("f-tel"),adresse:v("f-adr"),
+    affection:v("f-aff"),affectionAutre:v("f-autre"),type:v("f-type"),statut:v("f-statut"),dateConsult:v("f-dc"),
+    dateEntree:v("f-de"),dateSortie:v("f-ds"),issue:v("f-issue"),lit:v("f-lit"),
+    diagnostic:v("f-diag"),indication:v("f-ind"),dateIntervention:v("f-di"),recuNo:v("f-recu"),codePatient:v("f-code"),montant:v("f-mont"),dateRecu:v("f-dr"),notes:v("f-notes")
+  };
+  const warn=[];
+  if(!p.nom&&!p.prenom) warn.push("le nom");
+  if(!p.sexe) warn.push("le sexe");
+  if(p.age==="") warn.push("l'âge");
+  if(!p.affection) warn.push("l'affection");
+  if(p.type==="consultation"&&!p.dateConsult) warn.push("la date de consultation");
+  if(p.type==="hospitalisation"&&!p.dateEntree) warn.push("la date d'entrée");
+  if(warn.length){$("f-warn").innerHTML=`<div class="hint">Il manque ${warn.join(", ")} : ces informations sont nécessaires pour les rapports.</div>`;return;}
+  if(p.type==="hospitalisation"&&p.dateSortie&&p.dateSortie<p.dateEntree){$("f-warn").innerHTML=`<div class="hint">La date de sortie est avant la date d'entrée.</div>`;return;}
+  if(p.type==="hospitalisation"&&p.issue!=="En cours"&&!p.dateSortie) p.dateSortie=today();
+  if(p.vpa){const dup=DB.patients.find(x=>x.vpa===p.vpa&&x.id!==id&&x.type===p.type&&pDate(x)===(p.type==="hospitalisation"?p.dateEntree:p.dateConsult));
+    if(dup&&!window._dupOk){window._dupOk=true;$("f-warn").innerHTML=`<div class="hint">Une fiche avec le même N° VPA existe déjà à cette date (${esc(dup.prenom)} ${esc(dup.nom)}). Cliquez encore sur Enregistrer pour confirmer.</div>`;return;}}
+  window._dupOk=false;
+  let rec;
+  if(id){rec=DB.patients.find(x=>x.id===id);Object.assign(rec,p);}
+  else{rec=Object.assign({id:uid(),createdAt:new Date().toISOString()},p);DB.patients.push(rec);}
+  if(window._photo){await photoPut(rec.id,window._photo);rec.hasPhoto=true;}
+  save(); closePop(); toast("Fiche enregistrée"); go(document.querySelector("#nav .on").dataset.v);
+}
+async function delPatient(id){
+  if(!confirm("Supprimer définitivement cette fiche ?")) return;
+  DB.patients=DB.patients.filter(x=>x.id!==id); await photoDel(id); save(); closePop(); renderRegistre(); toast("Fiche supprimée");
+}
+
+/* =========================================================
+   TACOJO NUMÉRIQUE
+   ========================================================= */
+let tMode="plus"; const undoStack=[];
+$("t-mode").onclick=e=>{if(!e.target.dataset.m)return;tMode=e.target.dataset.m;[...$("t-mode").children].forEach(b=>b.classList.toggle("on",b===e.target));renderTacojo();};
+function tKey(){return $("t-sheet").value+"|"+$("t-date").value;}
+function tSheet(create){const k=tKey();if(!DB.tacojo[k]&&create)DB.tacojo[k]={};return DB.tacojo[k]||{};}
+function tRow(sheet,aff){if(!sheet[aff])sheet[aff]=blank($("t-sheet").value);return sheet[aff];}
+
+/* Dessin des bâtonnets : 1 = |, 2 = Γ, 3 = ⊓, 4 = □, 5 = ⊠ (carré barré) comme sur la feuille papier */
+function tallySVG(n){
+  if(!n) return "";
+  const full=Math.floor(n/5), rest=n%5, parts=[];
+  const box=(k)=>{const s=16,p=2,e=s-p;let l=[];
+    if(k>=1) l.push(`M${p} ${e}L${p} ${p}`); if(k>=2) l.push(`M${p} ${p}L${e} ${p}`);
+    if(k>=3) l.push(`M${e} ${p}L${e} ${e}`); if(k>=4) l.push(`M${e} ${e}L${p} ${e}`);
+    if(k>=5) l.push(`M${p} ${p}L${e} ${e}`);
+    return `<svg width="${s}" height="${s}"><path d="${l.join("")}" stroke="var(--tally)" stroke-width="1.8" fill="none" stroke-linecap="round"/></svg>`;};
+  if(n>40) return `<span style="color:var(--tally);font-weight:700">${n}</span>`;
+  for(let i=0;i<full;i++) parts.push(box(5)); if(rest) parts.push(box(rest));
+  return `<span class="tal">${parts.join("")}</span>`;
+}
+function renderTacojo(){
+  if(!$("t-date").value) $("t-date").value=today();
+  const kind=$("t-sheet").value, cols=COLS[kind], sheet=tSheet(false);
+  $("t-title").textContent=(kind==="consultation"?"TACOJO consultations":"TACOJO hospitalisation viscérale")+" · "+fmtD($("t-date").value);
+  $("t-help").innerHTML={plus:"Cliquez sur une case pour ajouter un bâtonnet. Le bouton <b>+ patient</b> d'une ligne coche en une fois le sexe, la tranche d'âge et la colonne de venue.",
+    moins:"Cliquez sur une case pour retirer un bâtonnet (correction).",
+    saisie:"Tapez directement les totaux comptés sur une feuille papier. Les cases jaunes se calculent toutes seules."}[tMode];
+  const groups=[];cols.forEach(c=>{const g=c.g||"";const last=groups[groups.length-1];if(g&&last&&last.g===g)last.n++;else groups.push({g,n:1,c});});
+  let h=`<thead><tr><th rowspan="2">AFFECTIONS</th>`+groups.map(x=>x.g?`<th class="num" colspan="${x.n}">${x.g}</th>`:`<th class="num" rowspan="2">${x.c.l}</th>`).join("")+`</tr><tr>`+cols.filter(c=>c.g).map(c=>`<th class="num">${c.l}</th>`).join("")+`</tr></thead><tbody>`;
+  const totals={}; const mism=[];
+  DB.aff.forEach(a=>{
+    const r=sheet[a]||blank(kind); const sx=(r.M||0)+(r.F||0), ag=(r.a1659||0)+(r.a60||0);
+    const ref=kind==="consultation"?(r.nouv||0)+(r.anc||0):(r.nbm||0);
+    const bad=(sx||ref)&&(sx!==ref); if(bad) mism.push(a);
+    h+=`<tr class="${bad?"mismatch":""}"><td class="aff">${esc(a)}${tMode==="plus"?`<button class="btn ghost small add noprint" onclick="quickAdd('${esc(a).replace(/'/g,"\\'")}')">+ patient</button>`:""}</td>`;
+    cols.forEach(c=>{
+      const val=c.calc?c.calc(r):(r[c.k]||0); totals[c.k]=(totals[c.k]||0)+val;
+      if(c.calc) h+=`<td class="calc">${val||""}</td>`;
+      else if(tMode==="saisie") h+=`<td class="num"><input class="cellin" type="number" min="0" value="${val||""}" data-a="${esc(a)}" data-k="${c.k}" onchange="setCell(this)"></td>`;
+      else h+=`<td class="cell" data-a="${esc(a)}" data-k="${c.k}">${c.k==="nbj"&&val>10?`<b>${val}</b>`:tallySVG(val)}${val?`<span class="n">${val}</span>`:""}</td>`;
+    });
+    h+="</tr>";
+  });
+  h+=`</tbody><tfoot><tr><td>TOTAL</td>`+cols.map(c=>`<td class="num">${totals[c.k]||0}</td>`).join("")+`</tr></tfoot>`;
+  $("t-table").innerHTML=h;
+  $("t-table").querySelectorAll("td.cell").forEach(td=>td.onclick=()=>bump(td.dataset.a,td.dataset.k,tMode==="moins"?-1:1));
+  const refL=kind==="consultation"?"nouveaux + anciens":"nombre de malades hospitalisés";
+  $("t-check").innerHTML=mism.length?`<div class="hint">Vérification : pour ${mism.length} affection(s) (${esc(mism.join(", "))}), le total M + F ne correspond pas au ${refL}. Ces lignes sont marquées en orange.</div>`:
+    (Object.keys(sheet).length?`<div class="ok">Feuille cohérente : M + F = ${refL} sur toutes les lignes.</div>`:"");
+}
+function bump(a,k,d){
+  const sheet=tSheet(true), r=tRow(sheet,a); if(d<0&&!(r[k]>0)) return;
+  r[k]=(r[k]||0)+d; undoStack.push([tKey(),a,{[k]:-d}]); save(); renderTacojo();
+}
+function setCell(inp){
+  const sheet=tSheet(true), r=tRow(sheet,inp.dataset.a), k=inp.dataset.k, nv=Math.max(0,parseInt(inp.value)||0);
+  undoStack.push([tKey(),inp.dataset.a,{[k]:(r[k]||0)-nv}]); r[k]=nv; save(); renderTacojo();
+}
+function undoTacojo(){
+  const u=undoStack.pop(); if(!u) return toast("Rien à annuler");
+  const [key,a,delta]=u; const r=DB.tacojo[key]?.[a]; if(!r) return;
+  Object.entries(delta).forEach(([k,d])=>r[k]=Math.max(0,(r[k]||0)+d)); save(); renderTacojo(); toast("Dernière action annulée");
+}
+function quickAdd(a){
+  const kind=$("t-sheet").value; const st={sexe:null,age:null,v:kind==="consultation"?null:"nbm",deces:false,jours:""};
+  const draw=()=>{
+    $("pop").innerHTML=`<div class="pop"><div class="box"><h2 style="margin-top:0">${esc(a)} : + 1 patient</h2>
+    <div class="muted">Sexe</div><div class="choice">${["M","F"].map(x=>`<button class="${st.sexe===x?"on":""}" data-s="${x}">${x==="M"?"Masculin":"Féminin"}</button>`).join("")}</div>
+    <div class="muted">Âge</div><div class="choice"><button data-g="a1659" class="${st.age==="a1659"?"on":""}">16 à 59 ans</button><button data-g="a60" class="${st.age==="a60"?"on":""}">60 ans et plus</button><button data-g="none" class="${st.age==="none"?"on":""}">Moins de 16 ans</button></div>
+    ${kind==="consultation"?`<div class="muted">Venue</div><div class="choice"><button data-v="nouv" class="${st.v==="nouv"?"on":""}">Nouveau malade</button><button data-v="anc" class="${st.v==="anc"?"on":""}">Ancien malade</button></div>`
+      :`<div class="row"><label>Journées d'hospitalisation (si connues)<input id="qa-j" type="number" min="0" value="${st.jours}"></label><label style="flex-direction:row;gap:6px;align-items:center"><input type="checkbox" id="qa-d" ${st.deces?"checked":""}>Décédé</label></div>`}
+    ${st.age==="none"?`<div class="hint">La grille n'a pas de colonne pour les moins de 16 ans : seuls le sexe et la venue seront comptés.</div>`:""}
+    <div class="row" style="justify-content:flex-end;margin-top:12px"><button class="btn ghost" onclick="closePop()">Annuler</button><button class="btn" id="qa-ok" ${st.sexe&&st.age&&st.v?"":"disabled style='opacity:.4'"}>Ajouter</button></div></div></div>`;
+    const box=$("pop").querySelector(".box");
+    box.querySelectorAll("[data-s]").forEach(b=>b.onclick=()=>{keep();st.sexe=b.dataset.s;draw();});
+    box.querySelectorAll("[data-g]").forEach(b=>b.onclick=()=>{keep();st.age=b.dataset.g;draw();});
+    box.querySelectorAll("[data-v]").forEach(b=>b.onclick=()=>{keep();st.v=b.dataset.v;draw();});
+    $("qa-ok").onclick=()=>{keep();
+      const sheet=tSheet(true), r=tRow(sheet,a), delta={};
+      const inc=(k,n=1)=>{r[k]=(r[k]||0)+n;delta[k]=(delta[k]||0)-n;};
+      inc(st.sexe); if(st.age!=="none") inc(st.age); inc(st.v);
+      if(kind==="hospitalisation"){ if(+st.jours>0) inc("nbj",+st.jours); if(st.deces) inc(st.sexe==="M"?"dM":"dF"); }
+      undoStack.push([tKey(),a,delta]); save(); closePop(); renderTacojo(); toast("+1 "+a);
+    };
+  };
+  const keep=()=>{if($("qa-j"))st.jours=$("qa-j").value;if($("qa-d"))st.deces=$("qa-d").checked;};
+  draw();
+}
+
+/* =========================================================
+   RAPPORTS
+   ========================================================= */
+function aggregate(kind,d1,d2,src){
+  const rows={}; const notes={moins16:0,sansAff:0,horsListe:new Set(),enCours:0};
+  const R=a=>{if(!rows[a])rows[a]=blank(kind);return rows[a];};
+  if(src!=="tac"){
+    DB.patients.forEach(p=>{
+      if(p.type!==kind) return;
+      let aff=p.affection||"Autres"; if(!p.affection) notes.sansAff++;
+      if(!DB.aff.includes(aff)){notes.horsListe.add(aff);}
+      const ac=ageCol(p.age);
+      if(kind==="consultation"){
+        if(!p.dateConsult||p.dateConsult<d1||p.dateConsult>d2) return;
+        const r=R(aff); if(p.sexe) r[p.sexe]++; if(ac==="a1659"||ac==="a60") r[ac]++; else if(ac==="moins16") notes.moins16++;
+        r[p.statut==="ancien"?"anc":"nouv"]++;
+      } else {
+        // Règle du service : tout le séjour (malade, journées, décès) est compté au mois d'entrée
+        const de=p.dateEntree; if(!de||de<d1||de>d2) return;
+        const ds=p.dateSortie||null;
+        const r=R(aff);
+        r.nbm++; if(p.sexe) r[p.sexe]++; if(ac==="a1659"||ac==="a60") r[ac]++; else if(ac==="moins16") notes.moins16++;
+        // journées : jour d'entrée ET jour de sortie comptés ; séjour en cours = jusqu'à aujourd'hui inclus
+        r.nbj+=Math.max(1,daysBetween(de,ds||today())+1);
+        if(!ds) notes.enCours++;
+        if(p.issue==="Décédé") r[p.sexe==="F"?"dF":"dM"]++;
+      }
+    });
+  }
+  if(src!=="reg"){
+    Object.entries(DB.tacojo).forEach(([k,sheet])=>{
+      const [kd,date]=k.split("|"); if(kd!==kind||date<d1||date>d2) return;
+      Object.entries(sheet).forEach(([a,vals])=>{const r=R(a);Object.entries(vals).forEach(([c,n])=>r[c]=(r[c]||0)+n);});
+    });
+  }
+  return {rows,notes};
+}
+function nextDay(d){const x=new Date(d);x.setDate(x.getDate()+1);return x.toISOString().slice(0,10);}
+function perChange(){const p=$("p-per").value;$("p-mois-l").classList.toggle("hide",p!=="mois");$("p-trim-l").classList.toggle("hide",p!=="trim");$("p-du-l").classList.toggle("hide",p!=="libre");$("p-au-l").classList.toggle("hide",p!=="libre");renderRapport();}
+function period(){
+  const p=$("p-per").value;
+  if(p==="mois"){const ym=$("p-mois").value||today().slice(0,7);const [a,b]=monthRange(ym);return {d1:a,d2:b,label:MOIS[+ym.slice(5)-1]+" "+ym.slice(0,4)};}
+  if(p==="trim"){const [y,t]=$("p-trim").value.split("-T").map(Number);const m1=(t-1)*3+1;const a=monthRange(y+"-"+String(m1).padStart(2,"0"))[0];const b=monthRange(y+"-"+String(m1+2).padStart(2,"0"))[1];return {d1:a,d2:b,label:(t===1?"1ER":t+"E")+" TRIMESTRE "+y};}
+  const a=$("p-du").value||today(), b=$("p-au").value||today();return {d1:a,d2:b,label:"DU "+fmtD(a)+" AU "+fmtD(b)};
+}
+let lastReport=null;
+function renderRapport(){
+  const kind=$("p-kind").value, src=$("p-src").value, {d1,d2,label}=period(), cols=COLS[kind];
+  const {rows,notes}=aggregate(kind,d1,d2,src);
+  const affs=DB.aff.concat(Object.keys(rows).filter(a=>!DB.aff.includes(a)));
+  const hideEmpty=$("p-empty").checked;
+  $("p-title").textContent=(kind==="consultation"?"CONSULTATIONS CHIRURGIE VISCÉRALE ":"HOSPITALISATION VISCÉRALE ")+label;
+  $("p-sub").textContent=kind==="consultation"?"SERVICE DE CHIRURGIE VISCÉRALE":"SERVICE DES SOINS INFIRMIERS";
+  const groups=[];cols.forEach(c=>{const g=c.g||"";const last=groups[groups.length-1];if(g&&last&&last.g===g)last.n++;else groups.push({g,n:1,c});});
+  let h=`<thead><tr><th rowspan="2">AFFECTIONS</th>`+groups.map(x=>x.g?`<th class="num" colspan="${x.n}">${x.g.toUpperCase()}</th>`:`<th class="num" rowspan="2">${x.c.l}</th>`).join("")+`</tr><tr>`+cols.filter(c=>c.g).map(c=>`<th class="num">${c.l}</th>`).join("")+`</tr></thead><tbody>`;
+  const tot={}, data=[];
+  affs.forEach(a=>{const r=rows[a]||blank(kind);const vals=cols.map(c=>c.calc?c.calc(r):(r[c.k]||0));
+    if(hideEmpty&&!vals.some(v=>v)) return; vals.forEach((v,i)=>tot[i]=(tot[i]||0)+v); data.push([a,...vals]);
+    h+=`<tr><td>${esc(a)}</td>`+vals.map((v,i)=>`<td class="num" ${cols[i].calc?'style="background:var(--yellow);font-weight:700"':""}>${v}</td>`).join("")+`</tr>`;});
+  const totRow=["TOTAL",...cols.map((c,i)=>tot[i]||0)]; data.push(totRow);
+  h+=`</tbody><tfoot><tr>`+totRow.map((v,i)=>`<td class="${i?"num":""}">${v}</td>`).join("")+`</tr></tfoot>`;
+  $("p-table").innerHTML=h;
+  const n=[];
+  if(notes.moins16) n.push(`${notes.moins16} patient(s) de moins de 16 ans : comptés dans le sexe mais pas dans les colonnes d'âge.`);
+  if(notes.sansAff) n.push(`${notes.sansAff} fiche(s) sans affection, rangées dans « Autres ».`);
+  if(notes.horsListe.size) n.push(`Affections hors liste : ${esc([...notes.horsListe].join(", "))}.`);
+  if(kind==="hospitalisation"&&notes.enCours) n.push(`${notes.enCours} patient(s) encore hospitalisé(s) : journées comptées jusqu'à aujourd'hui ; le chiffre augmentera jusqu'à leur sortie.`);
+  $("p-notes").innerHTML=(n.length?`<div class="hint noprint">${n.join("<br>")}</div>`:"")+`<p class="muted">Période du ${fmtD(d1)} au ${fmtD(d2)} · source : ${({both:"registre + TACOJO",reg:"registre",tac:"TACOJO"})[src]} · édité le ${fmtD(today())}</p>`;
+  lastReport={title:$("p-title").textContent,head:["AFFECTIONS",...cols.map(c=>(c.g?c.g+" ":"")+c.l)],data};
+}
+function exportRapportCSV(){
+  if(!lastReport) renderRapport();
+  const q=v=>{v=String(v);return /[;"\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;};
+  const lines=[["CHR EL HADJI AHMADOU SAKHIR NDIEGUENE DE THIES"],[lastReport.title],[],lastReport.head,...lastReport.data].map(r=>r.map(q).join(";"));
+  download(lastReport.title.replace(/\s+/g,"_")+".csv","﻿"+lines.join("\r\n"),"text/csv");
+}
+function download(name,content,type){const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([content],{type}));a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000);}
+
+/* =========================================================
+   PROGRAMME OPÉRATOIRE
+   ========================================================= */
+function renderProgramme(){
+  if(!$("o-du").value){const d=new Date();const day=(d.getDay()+6)%7;d.setDate(d.getDate()-day);$("o-du").value=d.toISOString().slice(0,10);d.setDate(d.getDate()+6);$("o-au").value=d.toISOString().slice(0,10);}
+  const d1=$("o-du").value,d2=$("o-au").value;
+  $("o-title").textContent="PROGRAMME OPÉRATOIRE CHIRURGIE VISCÉRALE · du "+fmtD(d1)+" au "+fmtD(d2);
+  const list=DB.patients.filter(p=>p.dateIntervention&&p.dateIntervention>=d1&&p.dateIntervention<=d2).sort((a,b)=>a.dateIntervention.localeCompare(b.dateIntervention));
+  const J=["DIMANCHE","LUNDI","MARDI","MERCREDI","JEUDI","VENDREDI","SAMEDI"];
+  let h=`<thead><tr><th>PRÉNOMS ET NOM</th><th class="num">ÂGE</th><th class="num">V.P.A</th><th>DIAGNOSTIC</th><th>INDICATION</th></tr></thead><tbody>`, cur="";
+  list.forEach(p=>{if(p.dateIntervention!==cur){cur=p.dateIntervention;const dt=new Date(cur);h+=`<tr><th colspan="5" style="text-align:center">${J[dt.getDay()]} ${dt.getDate()}</th></tr>`;}
+    h+=`<tr><td>${esc(p.prenom)} <b>${esc(p.nom)}</b></td><td class="num">${esc(p.age)} ans</td><td class="num">${esc(p.vpa)}</td><td>${esc(p.diagnostic||p.affection)}</td><td>${esc(p.indication)}</td></tr>`;});
+  if(!list.length) h+=`<tr><td colspan="5" class="muted">Aucune intervention programmée sur cette période. Renseignez la date d'intervention dans la fiche du patient.</td></tr>`;
+  $("o-table").innerHTML=h+"</tbody>";
+}
+
+/* =========================================================
+   RÉGLAGES / SAUVEGARDE
+   ========================================================= */
+function renderReglages(){$("s-aff").value=DB.aff.join("\n");}
+function saveAff(){const l=$("s-aff").value.split("\n").map(s=>s.trim()).filter(Boolean);if(!l.includes("Autres"))l.push("Autres");DB.aff=[...new Set(l)];save();toast("Liste enregistrée ("+DB.aff.length+" affections)");renderReglages();}
+function resetAff(){DB.aff=AFF_DEFAUT.slice();save();renderReglages();toast("Liste d'origine rétablie");}
+async function exportBackup(){const photos=await photoAll();download("sauvegarde-chirurgie-visc-"+today()+".json",JSON.stringify({version:1,date:new Date().toISOString(),data:DB,photos}),"application/json");}
+function importBackup(inp){const f=inp.files[0];if(!f)return;const r=new FileReader();r.onload=async()=>{try{const o=JSON.parse(r.result);if(!o.data||!o.data.patients)throw 0;
+  if(!confirm("Remplacer les données actuelles par cette sauvegarde ("+o.data.patients.length+" fiches) ?"))return;
+  DB=Object.assign({patients:[],tacojo:{},aff:AFF_DEFAUT.slice()},o.data);save();for(const [k,v] of Object.entries(o.photos||{}))await photoPut(k,v);toast("Sauvegarde restaurée");go("accueil");}catch(e){alert("Fichier de sauvegarde illisible.");}};r.readAsText(f);}
+async function wipeAll(){if(!confirm("Effacer toutes les fiches et toutes les feuilles TACOJO de cet ordinateur ?"))return;DB={patients:[],tacojo:{},aff:DB.aff};save();const d=await idbOpen();d.transaction("p","readwrite").objectStore("p").clear();toast("Données effacées");go("accueil");}
+function loadDemo(){
+  const ym=today().slice(0,7), d=n=>ym+"-"+String(n).padStart(2,"0");
+  const P=(o)=>Object.assign({id:uid(),createdAt:new Date().toISOString(),statut:"nouveau",issue:"En cours"},o);
+  DB.patients.push(
+    P({prenom:"Amdy",nom:"DIAW",age:"87",sexe:"M",vpa:"26/1556",affection:"Rétablissement continuité",type:"hospitalisation",dateEntree:d(3),dateSortie:d(9),issue:"Exéat (guéri / amélioré)",diagnostic:"VCS avec colostomie",indication:"Rétablissement de la continuité",dateIntervention:d(4)}),
+    P({prenom:"Talla",nom:"DIAGNE",age:"29",sexe:"M",vpa:"26/2070",affection:"Hernie",type:"consultation",dateConsult:d(2),diagnostic:"H.I.G.",indication:"Cure",dateIntervention:d(4)}),
+    P({prenom:"Mar",nom:"GUEYE",age:"19",sexe:"M",vpa:"26/1281",affection:"Fistule anale",type:"consultation",statut:"ancien",dateConsult:d(2),indication:"Fistulectomie",dateIntervention:d(4)}),
+    P({prenom:"Sop",nom:"DIOP",age:"43",sexe:"F",vpa:"26/1332",affection:"Lithiase vésiculaire",type:"hospitalisation",dateEntree:d(5),diagnostic:"Lithiase vésiculaire symptomatique",indication:"Cholécystectomie",dateIntervention:d(6),recuNo:"R-0457",montant:"5000"}),
+    P({prenom:"Oumar",nom:"FAYE",age:"68",sexe:"M",vpa:"26/1472",affection:"Péritonite",type:"hospitalisation",dateEntree:d(1),dateSortie:d(5),issue:"Décédé"})
+  );
+  DB.tacojo["consultation|"+d(1)]={"Hémorroïde":{M:5,F:3,a1659:7,a60:1,nouv:4,anc:4},"Appendicite":{M:2,F:2,a1659:4,a60:0,nouv:1,anc:3},"Hernie":{M:6,F:1,a1659:4,a60:3,nouv:2,anc:5}};
+  save(); toast("Données d'exemple ajoutées"); go("accueil");
+}
+
+/* Démarrage */
+(function init(){
+  $("p-mois").value=today().slice(0,7); $("t-date").value=today();
+  const y=+today().slice(0,4); $("p-trim").innerHTML=[y,y-1].flatMap(Y=>[4,3,2,1].map(t=>`<option value="${Y}-T${t}">${t===1?"1er":t+"e"} trimestre ${Y}</option>`)).join("");
+  $("p-trim").value=y+"-T"+(Math.floor((+today().slice(5,7)-1)/3)+1);
+  renderAccueil();
+})();
+</script>
+</body>
+</html>
