@@ -93,6 +93,7 @@ table.sticky tr.mismatch td.aff{box-shadow:inset 4px 0 0 var(--warn),1px 0 0 var
   th{background:#eee!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
   .tac td.calc{-webkit-print-color-adjust:exact;print-color-adjust:exact}
 }
+.manque{border:2px solid var(--danger)!important;background:#fff4f4!important}
 .doute input,.doute select,input.doute,select.doute{background:#fff6d6!important;border-color:#e0b100!important}
 </style>
 </head>
@@ -306,7 +307,7 @@ function idbOpen(){ return new Promise((res,rej)=>{ if(idb) return res(idb);
   const r = indexedDB.open("cv_thies_photos",1);
   r.onupgradeneeded=()=>r.result.createObjectStore("p");
   r.onsuccess=()=>{idb=r.result;res(idb)}; r.onerror=()=>rej(r.error); });}
-async function photoPut(id,data){ const d=await idbOpen(); return new Promise(r=>{const t=d.transaction("p","readwrite");t.objectStore("p").put(data,id);t.oncomplete=r;}); }
+async function photoPut(id,data){ const d=await idbOpen(); return new Promise((r,j)=>{const t=d.transaction("p","readwrite");t.objectStore("p").put(data,id);t.oncomplete=r;t.onerror=()=>j(t.error||new Error("stockage photo"));t.onabort=()=>j(t.error||new Error("stockage photo annulé"));}); }
 async function photoGet(id){ const d=await idbOpen(); return new Promise(r=>{const q=d.transaction("p").objectStore("p").get(id);q.onsuccess=()=>r(q.result);q.onerror=()=>r(null);}); }
 async function photoDel(id){ const d=await idbOpen(); return new Promise(r=>{const t=d.transaction("p","readwrite");t.objectStore("p").delete(id);t.oncomplete=r;}); }
 async function photoAll(){ const d=await idbOpen(); return new Promise(r=>{const out={};const c=d.transaction("p").objectStore("p").openCursor();c.onsuccess=()=>{const cur=c.result;if(cur){out[cur.key]=cur.value;cur.continue();}else r(out);};}); }
@@ -446,8 +447,8 @@ async function openPatient(id,opt={}){
   </div>
   <div class="row" style="margin-top:14px;justify-content:space-between">
     <div>${isNew?"":`<button class="btn danger small" onclick="delPatient('${p.id}')">Supprimer la fiche</button>`}</div>
-    <div class="row"><button class="btn ghost" onclick="closePop()">Annuler</button><button class="btn" onclick="savePatient(${isNew?"null":`'${p.id}'`})">Enregistrer</button></div>
-  </div></div></div>`;
+    <div class="row"><button class="btn ghost" onclick="closePop()">Annuler</button><button class="btn" id="f-save" onclick="savePatient(${isNew?"null":`'${p.id}'`})">Enregistrer</button></div>
+  </div><div id="f-warn-bas"></div></div></div>`;
   window._photo=null; window._photoOrig=null;
   ptype(); affHint(); diagHint(); indHint();
   if(p.hasPhoto){const ph=await photoGet(p.id); if(ph){window._photo=ph;showPhoto(ph);}}
@@ -882,7 +883,7 @@ async function runOCR(){
     out.innerHTML=r.alertes.map(a=>`<div class="hint">${esc(a)}</div>`).join("")+
       (remplis.length?`<div class="ok">Champs remplis : ${remplis.join(", ")}. Les cases en jaune sont à vérifier.</div>`:`<div class="hint">Aucun champ reconnu. Saisissez les champs en regardant la photo.</div>`)+
       (statutMsg?`<div class="muted" style="margin-top:4px">${statutMsg}</div>`:"")+
-      `<div class="muted" style="margin-top:4px">L'affection n'est pas sur le reçu : choisissez-la.</div>`+
+      `<div class="muted" style="margin-top:4px">L'affection n'est pas sur le reçu : <a href="#" onclick="const f=$('f-aff');f.scrollIntoView({behavior:'smooth',block:'center'});setTimeout(()=>f.focus(),400);return false">choisissez-la ici</a>.</div>`+
       `<details><summary>Texte lu</summary><pre style="white-space:pre-wrap;font-size:12px">${esc(r.texte)}</pre></details>`;
   }catch(e){out.innerHTML=`<div class="hint">Lecture impossible (${esc(e.message)}). Saisissez les champs à la main en regardant la photo.</div>`;}
 }
@@ -895,25 +896,39 @@ async function savePatient(id){
     dateEntree:v("f-de"),dateSortie:v("f-ds"),issue:v("f-issue"),lit:v("f-lit"),
     diagnostic:v("f-diag"),indication:v("f-ind"),dateIntervention:v("f-di"),recuNo:v("f-recu"),codePatient:v("f-code"),montant:v("f-mont"),dateRecu:v("f-dr"),notes:v("f-notes")
   };
-  const warn=[];
-  if(!p.nom&&!p.prenom) warn.push("le nom");
-  if(!p.sexe) warn.push("le sexe");
-  if(p.age==="") warn.push("l'âge");
-  if(!p.affection) warn.push("l'affection");
-  if(p.type==="consultation"&&!p.dateConsult) warn.push("la date de consultation");
-  if(p.type==="hospitalisation"&&!p.dateEntree) warn.push("la date d'entrée");
-  if(warn.length){$("f-warn").innerHTML=`<div class="hint">Il manque ${warn.join(", ")} : ces informations sont nécessaires pour les rapports.</div>`;return;}
-  if(p.type==="hospitalisation"&&p.dateSortie&&p.dateSortie<p.dateEntree){$("f-warn").innerHTML=`<div class="hint">La date de sortie est avant la date d'entrée.</div>`;return;}
+  // Champs obligatoires : [condition manquante, libellé, champ à montrer]
+  const manque=[
+    [!p.nom&&!p.prenom,"le nom","f-nom"],[!p.sexe,"le sexe","f-sexe"],[p.age==="","l'âge","f-age"],
+    [!p.affection,"l'affection","f-aff"],
+    [p.type==="consultation"&&!p.dateConsult,"la date de consultation","f-dc"],
+    [p.type==="hospitalisation"&&!p.dateEntree,"la date d'entrée","f-de"]
+  ].filter(x=>x[0]);
+  if(manque.length) return blockSave(`Enregistrement impossible : il manque ${manque.map(x=>x[1]).join(", ")}.`,manque.map(x=>x[2]));
+  if(p.type==="hospitalisation"&&p.dateSortie&&p.dateSortie<p.dateEntree) return blockSave("Enregistrement impossible : la date de sortie est avant la date d'entrée.",["f-ds"]);
   if(p.type==="hospitalisation"&&p.issue!=="En cours"&&!p.dateSortie) p.dateSortie=today();
   if(p.vpa){const dup=DB.patients.find(x=>x.vpa===p.vpa&&x.id!==id&&x.type===p.type&&pDate(x)===(p.type==="hospitalisation"?p.dateEntree:p.dateConsult));
-    if(dup&&!window._dupOk){window._dupOk=true;$("f-warn").innerHTML=`<div class="hint">Une fiche avec le même N° VPA existe déjà à cette date (${esc(dup.prenom)} ${esc(dup.nom)}). Cliquez encore sur Enregistrer pour confirmer.</div>`;return;}}
+    if(dup&&!window._dupOk){window._dupOk=true;return blockSave(`Une fiche avec le même N° VPA existe déjà à cette date (${esc(dup.prenom)} ${esc(dup.nom)}). Appuyez encore sur Enregistrer pour confirmer.`,["f-vpa"]);}}
   window._dupOk=false;
   p.affection=ensureAff(p.affection); p.diagnostic=ensureDiag(p.diagnostic); p.indication=ensureInd(p.indication);
   let rec;
   if(id){rec=DB.patients.find(x=>x.id===id);Object.assign(rec,p);}
   else{rec=Object.assign({id:uid(),createdAt:new Date().toISOString()},p);DB.patients.push(rec);}
-  if(window._photo){await photoPut(rec.id,window._photo);rec.hasPhoto=true;}
-  save(); closePop(); toast("Fiche enregistrée"); go(document.querySelector("#nav .on").dataset.v);
+  try{
+    if(window._photo){await photoPut(rec.id,window._photo);rec.hasPhoto=true;}
+  }catch(e){ rec.hasPhoto=false; toast("Fiche enregistrée, mais la photo n'a pas pu être gardée ("+e.message+")"); }
+  try{ save(); }catch(e){ return blockSave("Enregistrement impossible : la mémoire du navigateur est pleine. Faites une sauvegarde puis supprimez d'anciennes fiches. ("+esc(e.message)+")",[]); }
+  closePop(); toast("Fiche enregistrée"); go(document.querySelector("#nav .on").dataset.v);
+}
+/* Affiche le blocage à côté du bouton Enregistrer, entoure les champs en cause et fait défiler jusqu'au premier */
+document.addEventListener("input",e=>{if(e.target.classList&&e.target.classList.contains("manque"))e.target.classList.remove("manque");});
+document.addEventListener("change",e=>{if(e.target.classList&&e.target.classList.contains("manque"))e.target.classList.remove("manque");});
+function blockSave(msg,ids){
+  document.querySelectorAll("#pop .manque").forEach(e=>e.classList.remove("manque"));
+  const html=`<div class="hint" style="border-left-color:var(--danger);background:#fbe9e9">${msg}</div>`;
+  $("f-warn").innerHTML=html; $("f-warn-bas").innerHTML=html;
+  ids.forEach(i=>{const el=$(i);if(el)el.classList.add("manque");});
+  const first=ids.length&&$(ids[0]);
+  if(first){first.scrollIntoView({behavior:"smooth",block:"center"});setTimeout(()=>first.focus({preventScroll:true}),400);}
 }
 async function delPatient(id){
   if(!confirm("Supprimer définitivement cette fiche ?")) return;
