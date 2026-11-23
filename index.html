@@ -169,7 +169,7 @@ table.sticky tr.mismatch td.aff{box-shadow:inset 4px 0 0 var(--warn),1px 0 0 var
       <button class="btn ghost small" onclick="printView('tacojo')">Imprimer</button>
     </div>
     <div class="row" style="margin-top:10px">
-      <label style="min-width:280px">Ajouter une affection à la feuille<input id="t-aff" list="aff-list" placeholder="Tapez pour chercher (ex. hern…)" onkeydown="if(event.key==='Enter')addAffSheet()"></label>
+      <label style="min-width:280px">Ajouter une affection à la feuille<input id="t-aff" data-combo="aff" autocomplete="off" placeholder="Tapez pour chercher (ex. hern…)" onkeydown="if(event.key==='Enter')addAffSheet()"></label>
       <button class="btn small" onclick="addAffSheet()">Ajouter</button>
       <label style="flex-direction:row;align-items:center;gap:6px"><input type="checkbox" id="t-all" onchange="renderTacojo()">Afficher toute la liste</label>
     </div>
@@ -231,9 +231,16 @@ table.sticky tr.mismatch td.aff{box-shadow:inset 4px 0 0 var(--warn),1px 0 0 var
 <section class="view" id="v-reglages">
   <div class="card">
     <h2>Liste des affections</h2>
-    <p class="muted">Une affection par ligne, dans l'ordre de la feuille papier. Elle sert au registre, au TACOJO et aux rapports.</p>
+    <p class="muted">C'est la liste proposée dans tous les champs « Affection » (fiche patient, TACOJO) et utilisée dans les rapports. Une affection ajoutée depuis un champ de saisie apparaît ici, et une affection ajoutée ici apparaît dans les champs de saisie. Une affection par ligne, dans l'ordre de la feuille papier.</p>
+    <div class="row" style="margin-bottom:8px"><label style="min-width:280px">Ajouter une affection<input id="s-aff-new" placeholder="ex. Volvulus du sigmoïde" onkeydown="if(event.key==='Enter')addAffSettings()"></label><button class="btn small" onclick="addAffSettings()">Ajouter</button><span class="muted" id="s-aff-count"></span></div>
     <textarea id="s-aff" style="width:100%;min-height:260px"></textarea>
     <div class="row" style="margin-top:8px"><button class="btn" onclick="saveAff()">Enregistrer la liste</button><button class="btn ghost" onclick="resetAff()">Revenir à la liste d'origine</button></div>
+  </div>
+  <div class="card">
+    <h2>Liste des diagnostics</h2>
+    <p class="muted">Proposée dans le champ « Diagnostic » de la fiche patient. Elle grandit aussi toute seule avec les diagnostics saisis. Un diagnostic par ligne.</p>
+    <textarea id="s-diag" style="width:100%;min-height:160px"></textarea>
+    <div class="row" style="margin-top:8px"><button class="btn" onclick="saveDiag()">Enregistrer la liste</button></div>
   </div>
   <div class="card">
     <h2>Sauvegarde</h2>
@@ -394,7 +401,7 @@ async function openPatient(id,opt={}){
       <label>Sexe<select id="f-sexe"><option value="">—</option><option ${p.sexe==="M"?"selected":""} value="M">M</option><option ${p.sexe==="F"?"selected":""} value="F">F</option></select></label>
       <label>Téléphone<input id="f-tel" value="${esc(p.telephone)}"></label>
       <label>Adresse<input id="f-adr" value="${esc(p.adresse)}"></label>
-      <label>Affection<input id="f-aff" list="aff-list" value="${esc(p.affection)}" placeholder="Tapez pour chercher…" oninput="affHint()"><span id="f-aff-hint" class="muted"></span></label>
+      <label>Affection<input id="f-aff" data-combo="aff" autocomplete="off" value="${esc(p.affection)}" placeholder="Tapez pour chercher…" oninput="affHint()"><span id="f-aff-hint" class="muted"></span></label>
       <label id="f-autre-l" class="${p.affection==="Autres"?"":"hide"}">Préciser<input id="f-autre" value="${esc(p.affectionAutre)}"></label>
     </div>
     <h3 style="font-size:14px;margin:14px 0 6px">Venue</h3>
@@ -409,7 +416,7 @@ async function openPatient(id,opt={}){
     </div>
     <h3 style="font-size:14px;margin:14px 0 6px">Bloc opératoire (facultatif)</h3>
     <div class="grid">
-      <label>Diagnostic<input id="f-diag" list="diag-list" value="${esc(p.diagnostic)}" placeholder="Tapez pour chercher…" oninput="diagHint()"><span id="f-diag-hint" class="muted"></span></label>
+      <label>Diagnostic<input id="f-diag" data-combo="diag" autocomplete="off" value="${esc(p.diagnostic)}" placeholder="Tapez pour chercher…" oninput="diagHint()"><span id="f-diag-hint" class="muted"></span></label>
       <label>Indication / intervention<input id="f-ind" value="${esc(p.indication)}"></label>
       <label>Date d'intervention<input type="date" id="f-di" value="${esc(p.dateIntervention)}"></label>
     </div>
@@ -1132,7 +1139,11 @@ function renderProgramme(){
 /* =========================================================
    RÉGLAGES / SAUVEGARDE
    ========================================================= */
-function renderReglages(){$("s-aff").value=DB.aff.join("\n");}
+function renderReglages(){$("s-aff").value=DB.aff.join("\n");$("s-aff-count").textContent=DB.aff.length+" affections";$("s-diag").value=diagList().join("\n");}
+function addAffSettings(){const v=$("s-aff-new").value.trim();if(!v)return;
+  if(findAff(v)){toast("« "+findAff(v)+" » est déjà dans la liste");return;}
+  ensureAff(v);$("s-aff-new").value="";renderReglages();}
+function saveDiag(){const l=$("s-diag").value.split("\n").map(x=>x.trim()).filter(Boolean);DB.diag=[...new Set(l)];save();refreshAffList();renderReglages();toast("Liste enregistrée ("+DB.diag.length+" diagnostics)");}
 function saveAff(){setTimeout(refreshAffList,0);const l=$("s-aff").value.split("\n").map(s=>s.trim()).filter(Boolean);if(!l.includes("Autres"))l.push("Autres");DB.aff=[...new Set(l)];save();toast("Liste enregistrée ("+DB.aff.length+" affections)");renderReglages();}
 function resetAff(){setTimeout(refreshAffList,0);DB.aff=AFF_DEFAUT.slice();save();renderReglages();toast("Liste d'origine rétablie");}
 async function exportBackup(){const photos=await photoAll();download("sauvegarde-chirurgie-visc-"+today()+".json",JSON.stringify({version:1,date:new Date().toISOString(),data:DB,photos}),"application/json");}
@@ -1154,8 +1165,51 @@ function loadDemo(){
   save(); toast("Données d'exemple ajoutées"); go("accueil");
 }
 
+/* =========================================================
+   Liste déroulante avec recherche (affections, diagnostics)
+   - clic dans le champ : toute la liste s'affiche
+   - on tape : la liste se filtre (sans tenir compte des accents)
+   - si rien ne correspond : « + Ajouter … »
+   ========================================================= */
+(function(){
+  const st=document.createElement("style");
+  st.textContent=`.combo-pop{position:fixed;z-index:50;background:#fff;border:1px solid var(--line);border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,.15);max-height:260px;overflow:auto;font-size:14px}
+  .combo-pop div{padding:7px 10px;cursor:pointer}.combo-pop div.on,.combo-pop div:hover{background:var(--accent-soft)}
+  .combo-pop div.add{color:var(--accent);font-weight:600;border-top:1px solid var(--line)}
+  input[data-combo]{background:#fff url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8'><path d='M1 1l5 5 5-5' stroke='%23555' fill='none' stroke-width='1.6'/></svg>") no-repeat right 9px center;padding-right:28px}`;
+  document.head.appendChild(st);
+  let pop=null,inp=null,idx=-1,items=[];
+  const source=t=>t==="diag"?diagList():DB.aff;
+  function close(){if(pop)pop.remove();pop=null;inp=null;idx=-1;}
+  function pick(v){const el=inp;close();if(!el)return;
+    if(v.add){ if(el.dataset.combo==="diag") v.val=ensureDiag(v.val); else v.val=ensureAff(v.val); }
+    el.value=v.val;el.dispatchEvent(new Event("input",{bubbles:true}));el.dispatchEvent(new Event("change",{bubbles:true}));el.dispatchEvent(new Event("combopick",{bubbles:true}));}
+  function open(el){
+    inp=el;const q=norm(el.value);const all=source(el.dataset.combo);
+    items=all.filter(a=>!q||norm(a).includes(q)).map(a=>({val:a}));
+    if(el.value.trim()&&!all.some(a=>norm(a)===q)) items.push({val:el.value.trim(),add:true});
+    if(!pop){pop=document.createElement("div");pop.className="combo-pop";document.body.appendChild(pop);
+      pop.addEventListener("mousedown",e=>{e.preventDefault();const d=e.target.closest("[data-i]");if(d)pick(items[+d.dataset.i]);});}
+    const r=el.getBoundingClientRect();pop.style.left=r.left+"px";pop.style.width=Math.max(r.width,220)+"px";
+    const below=innerHeight-r.bottom;if(below<200&&r.top>below){pop.style.top="";pop.style.bottom=(innerHeight-r.top+2)+"px";}else{pop.style.bottom="";pop.style.top=(r.bottom+2)+"px";}
+    idx=Math.min(idx,items.length-1);
+    pop.innerHTML=items.length?items.map((it,i)=>`<div data-i="${i}" class="${it.add?"add":""} ${i===idx?"on":""}">${it.add?"+ Ajouter « "+esc(it.val)+" » à la liste":esc(it.val)}</div>`).join(""):`<div class="muted">Liste vide</div>`;
+  }
+  document.addEventListener("focusin",e=>{if(e.target.matches("input[data-combo]")){idx=-1;open(e.target);}});
+  document.addEventListener("click",e=>{if(e.target.matches("input[data-combo]"))open(e.target);});
+  document.addEventListener("input",e=>{if(e.target.matches("input[data-combo]")&&e.isTrusted){idx=-1;open(e.target);}});
+  document.addEventListener("focusout",e=>{if(e.target===inp)setTimeout(()=>{if(document.activeElement!==inp)close();},120);});
+  document.addEventListener("keydown",e=>{if(!pop||e.target!==inp)return;
+    if(e.key==="ArrowDown"){idx=Math.min(items.length-1,idx+1);open(inp);e.preventDefault();}
+    else if(e.key==="ArrowUp"){idx=Math.max(0,idx-1);open(inp);e.preventDefault();}
+    else if(e.key==="Enter"&&idx>=0){e.preventDefault();e.stopImmediatePropagation();pick(items[idx]);}
+    else if(e.key==="Escape")close();},true);
+  window.addEventListener("scroll",e=>{if(pop&&inp&&!pop.contains(e.target))open(inp);},true);
+})();
+
 /* Démarrage */
 (function init(){
+  $("t-aff").addEventListener("combopick",()=>addAffSheet());
   $("p-mois").value=today().slice(0,7); tFillPeriod(); refreshAffList();
   const y=+today().slice(0,4); $("p-trim").innerHTML=[y,y-1].flatMap(Y=>[4,3,2,1].map(t=>`<option value="${Y}-T${t}">${t===1?"1er":t+"e"} trimestre ${Y}</option>`)).join("");
   $("p-trim").value=y+"-T"+(Math.floor((+today().slice(5,7)-1)/3)+1);
