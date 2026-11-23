@@ -135,7 +135,9 @@ tfoot td{font-weight:700;background:#eef1ef}
   <div class="card noprint">
     <div class="row">
       <label>Feuille<select id="t-sheet" onchange="renderTacojo()"><option value="consultation">Consultations</option><option value="hospitalisation">Hospitalisations</option></select></label>
-      <label>Date de la feuille<input type="date" id="t-date" onchange="renderTacojo()"></label>
+      <label>Mois de saisie<select id="t-mois" onchange="renderTacojo()"></select></label>
+      <label>Année<select id="t-annee" onchange="renderTacojo()"></select></label>
+      <label>Jour<select id="t-jour" onchange="renderTacojo()"></select></label>
       <div>
         <div class="muted" style="margin-bottom:3px">Mode</div>
         <div class="seg" id="t-mode">
@@ -146,6 +148,11 @@ tfoot td{font-weight:700;background:#eef1ef}
       </div>
       <button class="btn ghost small" onclick="undoTacojo()">↶ Annuler</button>
       <button class="btn ghost small" onclick="printView('tacojo')">Imprimer</button>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <label style="min-width:280px">Ajouter une affection à la feuille<input id="t-aff" list="aff-list" placeholder="Tapez pour chercher (ex. hern…)" onkeydown="if(event.key==='Enter')addAffSheet()"></label>
+      <button class="btn small" onclick="addAffSheet()">Ajouter</button>
+      <label style="flex-direction:row;align-items:center;gap:6px"><input type="checkbox" id="t-all" onchange="renderTacojo()">Afficher toute la liste</label>
     </div>
     <p class="muted" id="t-help"></p>
   </div>
@@ -222,6 +229,7 @@ tfoot td{font-weight:700;background:#eef1ef}
 </section>
 </main>
 
+<datalist id="aff-list"></datalist>
 <div id="pop"></div>
 
 <script>
@@ -294,6 +302,7 @@ function blank(kind){const o={};COLS[kind].forEach(c=>{if(!c.calc)o[c.k]=0});ret
    Navigation
    ========================================================= */
 function go(v){
+  refreshAffList();
   document.querySelectorAll("#nav button").forEach(b=>b.classList.toggle("on",b.dataset.v===v));
   document.querySelectorAll("section.view").forEach(s=>s.classList.toggle("on",s.id==="v-"+v));
   ({accueil:renderAccueil,registre:renderRegistre,tacojo:renderTacojo,rapports:renderRapport,programme:renderProgramme,reglages:renderReglages})[v]();
@@ -365,7 +374,7 @@ async function openPatient(id,opt={}){
       <label>Sexe<select id="f-sexe"><option value="">—</option><option ${p.sexe==="M"?"selected":""} value="M">M</option><option ${p.sexe==="F"?"selected":""} value="F">F</option></select></label>
       <label>Téléphone<input id="f-tel" value="${esc(p.telephone)}"></label>
       <label>Adresse<input id="f-adr" value="${esc(p.adresse)}"></label>
-      <label>Affection<select id="f-aff" onchange="$('f-autre-l').classList.toggle('hide',this.value!=='Autres')"><option value="">—</option>${affOptions(p.affection)}</select></label>
+      <label>Affection<input id="f-aff" list="aff-list" value="${esc(p.affection)}" placeholder="Tapez pour chercher…" oninput="affHint()"><span id="f-aff-hint" class="muted"></span></label>
       <label id="f-autre-l" class="${p.affection==="Autres"?"":"hide"}">Préciser<input id="f-autre" value="${esc(p.affectionAutre)}"></label>
     </div>
     <h3 style="font-size:14px;margin:14px 0 6px">Venue</h3>
@@ -410,10 +419,12 @@ async function openPatient(id,opt={}){
     <div class="row"><button class="btn ghost" onclick="closePop()">Annuler</button><button class="btn" onclick="savePatient(${isNew?"null":`'${p.id}'`})">Enregistrer</button></div>
   </div></div></div>`;
   window._photo=null; window._photoOrig=null;
-  ptype();
+  ptype(); affHint();
   if(p.hasPhoto){const ph=await photoGet(p.id); if(ph){window._photo=ph;showPhoto(ph);}}
   if(opt.photo) setTimeout(()=>$("f-photo").click(),50);
 }
+function affHint(){const v=$("f-aff").value.trim();$("f-autre-l").classList.toggle("hide",v!=="Autres");
+  $("f-aff-hint").textContent=v&&!findAff(v)?"Nouvelle affection : elle sera ajoutée à la liste à l'enregistrement.":"";}
 function ptype(){const h=$("f-type").value==="hospitalisation";document.querySelectorAll(".fc").forEach(e=>e.classList.toggle("hide",h));document.querySelectorAll(".fh").forEach(e=>e.classList.toggle("hide",!h));}
 function closePop(){$("pop").innerHTML="";}
 function photoChosen(inp){
@@ -867,6 +878,7 @@ async function savePatient(id){
   if(p.vpa){const dup=DB.patients.find(x=>x.vpa===p.vpa&&x.id!==id&&x.type===p.type&&pDate(x)===(p.type==="hospitalisation"?p.dateEntree:p.dateConsult));
     if(dup&&!window._dupOk){window._dupOk=true;$("f-warn").innerHTML=`<div class="hint">Une fiche avec le même N° VPA existe déjà à cette date (${esc(dup.prenom)} ${esc(dup.nom)}). Cliquez encore sur Enregistrer pour confirmer.</div>`;return;}}
   window._dupOk=false;
+  p.affection=ensureAff(p.affection);
   let rec;
   if(id){rec=DB.patients.find(x=>x.id===id);Object.assign(rec,p);}
   else{rec=Object.assign({id:uid(),createdAt:new Date().toISOString()},p);DB.patients.push(rec);}
@@ -883,7 +895,27 @@ async function delPatient(id){
    ========================================================= */
 let tMode="plus"; const undoStack=[];
 $("t-mode").onclick=e=>{if(!e.target.dataset.m)return;tMode=e.target.dataset.m;[...$("t-mode").children].forEach(b=>b.classList.toggle("on",b===e.target));renderTacojo();};
-function tKey(){return $("t-sheet").value+"|"+$("t-date").value;}
+function tDate(){const ym=$("t-annee").value+"-"+$("t-mois").value;const j=$("t-jour").value;return j?ym+"-"+j:ym;}
+function tLabel(){const j=$("t-jour").value;return (j?(+j)+" ":"")+MOIS[+$("t-mois").value-1].toLowerCase()+" "+$("t-annee").value+(j?"":" (tout le mois)");}
+function tKey(){return $("t-sheet").value+"|"+tDate();}
+function tFillPeriod(){
+  const t=today(),y=+t.slice(0,4);
+  $("t-mois").innerHTML=MOIS.map((m,i)=>`<option value="${String(i+1).padStart(2,"0")}">${m.charAt(0)+m.slice(1).toLowerCase()}</option>`).join("");
+  $("t-annee").innerHTML=[y+1,y,y-1,y-2,y-3].map(Y=>`<option>${Y}</option>`).join("");
+  $("t-jour").innerHTML=`<option value="">Tout le mois</option>`+Array.from({length:31},(_,i)=>`<option value="${String(i+1).padStart(2,"0")}">${i+1}</option>`).join("");
+  $("t-mois").value=t.slice(5,7); $("t-annee").value=String(y);
+}
+function refreshAffList(){$("aff-list").innerHTML=DB.aff.map(a=>`<option value="${esc(a)}">`).join("");}
+/* Retrouve une affection existante sans tenir compte des accents ni des majuscules */
+const norm=s=>String(s||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().trim();
+function findAff(v){return DB.aff.find(a=>norm(a)===norm(v));}
+function ensureAff(v){v=String(v||"").trim();if(!v)return "";const ex=findAff(v);if(ex)return ex;
+  v=v.charAt(0).toUpperCase()+v.slice(1);DB.aff.push(v);save();refreshAffList();toast("« "+v+" » ajoutée à la liste des affections");return v;}
+function addAffSheet(){
+  const v=$("t-aff").value.trim(); if(!v) return toast("Tapez ou choisissez une affection");
+  if(!findAff(v)&&!confirm("« "+v+" » n'est pas dans la liste. L'ajouter pour toutes les saisies ?")) return;
+  const a=ensureAff(v); const sheet=tSheet(true); tRow(sheet,a); save(); $("t-aff").value=""; renderTacojo(); toast(a+" ajoutée à la feuille");
+}
 function tSheet(create){const k=tKey();if(!DB.tacojo[k]&&create)DB.tacojo[k]={};return DB.tacojo[k]||{};}
 function tRow(sheet,aff){if(!sheet[aff])sheet[aff]=blank($("t-sheet").value);return sheet[aff];}
 
@@ -901,16 +933,19 @@ function tallySVG(n){
   return `<span class="tal">${parts.join("")}</span>`;
 }
 function renderTacojo(){
-  if(!$("t-date").value) $("t-date").value=today();
+  if(!$("t-mois").value) tFillPeriod();
   const kind=$("t-sheet").value, cols=COLS[kind], sheet=tSheet(false);
-  $("t-title").textContent=(kind==="consultation"?"TACOJO consultations":"TACOJO hospitalisation viscérale")+" · "+fmtD($("t-date").value);
+  $("t-title").textContent=(kind==="consultation"?"TACOJO consultations":"TACOJO hospitalisation viscérale")+" · "+tLabel();
   $("t-help").innerHTML={plus:"Cliquez sur une case pour ajouter un bâtonnet. Le bouton <b>+ patient</b> d'une ligne coche en une fois le sexe, la tranche d'âge et la colonne de venue.",
     moins:"Cliquez sur une case pour retirer un bâtonnet (correction).",
     saisie:"Tapez directement les totaux comptés sur une feuille papier. Les cases jaunes se calculent toutes seules."}[tMode];
   const groups=[];cols.forEach(c=>{const g=c.g||"";const last=groups[groups.length-1];if(g&&last&&last.g===g)last.n++;else groups.push({g,n:1,c});});
   let h=`<thead><tr><th rowspan="2">AFFECTIONS</th>`+groups.map(x=>x.g?`<th class="num" colspan="${x.n}">${x.g}</th>`:`<th class="num" rowspan="2">${x.c.l}</th>`).join("")+`</tr><tr>`+cols.filter(c=>c.g).map(c=>`<th class="num">${c.l}</th>`).join("")+`</tr></thead><tbody>`;
   const totals={}; const mism=[];
-  DB.aff.forEach(a=>{
+  const showAll=$("t-all").checked;
+  const rowsAff=DB.aff.filter(a=>showAll||sheet[a]).concat(Object.keys(sheet).filter(a=>!DB.aff.includes(a)));
+  if(!rowsAff.length) h+=`<tr><td colspan="${cols.length+1}" class="muted" style="padding:16px">Feuille vide. Cherchez une affection dans « Ajouter une affection à la feuille » ci-dessus, ou cochez « Afficher toute la liste ».</td></tr>`;
+  rowsAff.forEach(a=>{
     const r=sheet[a]||blank(kind); const sx=(r.M||0)+(r.F||0), ag=(r.a1659||0)+(r.a60||0);
     const ref=kind==="consultation"?(r.nouv||0)+(r.anc||0):(r.nbm||0);
     const bad=(sx||ref)&&(sx!==ref); if(bad) mism.push(a);
@@ -1000,7 +1035,7 @@ function aggregate(kind,d1,d2,src){
   }
   if(src!=="reg"){
     Object.entries(DB.tacojo).forEach(([k,sheet])=>{
-      const [kd,date]=k.split("|"); if(kd!==kind||date<d1||date>d2) return;
+      const [kd,date]=k.split("|"); if(kd!==kind) return; const [a0,a1]=date.length===7?monthRange(date):[date,date]; if(a1<d1||a0>d2) return;
       Object.entries(sheet).forEach(([a,vals])=>{const r=R(a);Object.entries(vals).forEach(([c,n])=>r[c]=(r[c]||0)+n);});
     });
   }
@@ -1067,8 +1102,8 @@ function renderProgramme(){
    RÉGLAGES / SAUVEGARDE
    ========================================================= */
 function renderReglages(){$("s-aff").value=DB.aff.join("\n");}
-function saveAff(){const l=$("s-aff").value.split("\n").map(s=>s.trim()).filter(Boolean);if(!l.includes("Autres"))l.push("Autres");DB.aff=[...new Set(l)];save();toast("Liste enregistrée ("+DB.aff.length+" affections)");renderReglages();}
-function resetAff(){DB.aff=AFF_DEFAUT.slice();save();renderReglages();toast("Liste d'origine rétablie");}
+function saveAff(){setTimeout(refreshAffList,0);const l=$("s-aff").value.split("\n").map(s=>s.trim()).filter(Boolean);if(!l.includes("Autres"))l.push("Autres");DB.aff=[...new Set(l)];save();toast("Liste enregistrée ("+DB.aff.length+" affections)");renderReglages();}
+function resetAff(){setTimeout(refreshAffList,0);DB.aff=AFF_DEFAUT.slice();save();renderReglages();toast("Liste d'origine rétablie");}
 async function exportBackup(){const photos=await photoAll();download("sauvegarde-chirurgie-visc-"+today()+".json",JSON.stringify({version:1,date:new Date().toISOString(),data:DB,photos}),"application/json");}
 function importBackup(inp){const f=inp.files[0];if(!f)return;const r=new FileReader();r.onload=async()=>{try{const o=JSON.parse(r.result);if(!o.data||!o.data.patients)throw 0;
   if(!confirm("Remplacer les données actuelles par cette sauvegarde ("+o.data.patients.length+" fiches) ?"))return;
@@ -1090,7 +1125,7 @@ function loadDemo(){
 
 /* Démarrage */
 (function init(){
-  $("p-mois").value=today().slice(0,7); $("t-date").value=today();
+  $("p-mois").value=today().slice(0,7); tFillPeriod(); refreshAffList();
   const y=+today().slice(0,4); $("p-trim").innerHTML=[y,y-1].flatMap(Y=>[4,3,2,1].map(t=>`<option value="${Y}-T${t}">${t===1?"1er":t+"e"} trimestre ${Y}</option>`)).join("");
   $("p-trim").value=y+"-T"+(Math.floor((+today().slice(5,7)-1)/3)+1);
   renderAccueil();
